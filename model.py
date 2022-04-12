@@ -6,6 +6,8 @@ import torch.nn.functional as F
 from torch.autograd import Variable
 import numpy as np
 
+#from utils import *
+
 def parse_cfg(cfgfile):
     """
     Parses config file and stores every block as a dicts.
@@ -182,3 +184,4 @@ def create_modules(blocks):
         output_filters.append(filters)
     
     return (net_info, module_list)
+
