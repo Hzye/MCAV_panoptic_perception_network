@@ -49,3 +49,23 @@ def predict_transform(prediction, in_dims, anchors, n_classes, CUDA=True):
     x_y_offset = torch.cat((x_offset, y_offset), 1).repeat(1, n_anchors).view(-1,2).unsqueeze(0)
 
     prediction[:,:,:2] += x_y_offset
+
+    ## apply anchors to dimensions of bbox
+    # log transform height and width
+    anchors = torch.FloatTensor(anchors)
+
+    if CUDA:
+        achors = anchors.cuda()
+
+    anchors = anchors.repeat(grid_size*grid_size, 1).unsqueeze(0)
+    prediction[:,:,2:4] = torch.exp(prediction[:,:,2:4])*anchors
+
+    # apply sigmoid activation to class scores
+    prediction[:,:,5:5+n_classes] = torch.sigmoid((prediction[:,:,5:+n_classes]))
+
+    # resize detection map to size of input image
+    # bbox attributes are sized according to feature map e.g. 13x13
+    # if input image is 416x416, multiply attributes by 32, or stride
+    prediction[:,:,:4] *= stride
+
+    return prediction
