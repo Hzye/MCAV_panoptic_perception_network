@@ -6,7 +6,19 @@ import torch.nn.functional as F
 from torch.autograd import Variable
 import numpy as np
 
-#from utils import *
+from utils import *
+
+def test_forward_pass():
+    """
+    Simple function to test forward pass.
+    """
+    img = cv2.imread("images/0000f77c-62c2a288.jpg")
+    img = cv2.resize(img, (416,416)) # resize to input dims
+    reshaped_img = img[:,:,::-1].transpose((2,0,1)) # H x W x C -> C x H x W
+    reshaped_img = reshaped_img[np.newaxis,:,:,:]/255.0 # add channel at 0 for batch norm
+    reshaped_img = torch.from_numpy(reshaped_img).float() # convert to float
+    reshaped_img = Variable(reshaped_img) # convert to variable
+    return reshaped_img
 
 def parse_cfg(cfgfile):
     """
@@ -185,3 +197,104 @@ def create_modules(blocks):
     
     return (net_info, module_list)
 
+class Net(nn.Module):
+    def __init__(self, cfgfile):
+        super(Net, self).__init__()
+        self.blocks = parse_cfg(cfgfile)
+        self.net_info, self.module_list = create_modules(self.blocks)
+
+    ## Forward pass
+    # 1. calculate output
+    # 2. transform output detection feature maps so that it can be 
+    #    processed easier 
+    def forward(self, x, CUDA):
+        modules = self.blocks[1:]
+        outputs = {} # cache outputs for route layer
+        #print("hello")
+
+        # iterate over module_list, pass input through each module
+        # in -> [module[0]] -> [module[1]] -> ...
+        write = 0 # used as flag to inidicate if we've encountered first detection yet for yolo 
+        for idx, module in enumerate(modules):
+            module_type = (module["type"])
+            #print(module_type)
+
+            ## CONV and UPSAMPLE LAYERS:
+            # pass input -> conv/upsample module -> output
+            if (module_type == "convolutional") or (module_type == "upsample"):
+                x = self.module_list[idx](x) # pass in 
+            
+            ## ROUTE LAYERS
+            # case 1: layer = n
+            # - output feature map from the layer n-layers backward
+            # case 2: layer = n, m
+            # - concat(feature map from n-layers back + mth layer) along depth dim
+            elif (module_type == "route"):
+                layers = module["layers"]
+                layers = [int(n) for n in layers]
+
+                if (layers[0]) > 0:
+                    layers[0] = layers[0] - idx # refer to current layer/module idx 
+
+                # for case 1
+                if len(layers) == 1:
+                    x = outputs[idx + (layers[0])] # pull from cache n layers ago
+                
+                # for case 2
+                else:
+                    if (layers[1]) > 0:
+                        layers[1] = layers[1] - idx # refer to current layer/module idx
+                    
+                    feature_map_1 = outputs[idx + layers[0]] # take feature map from n-layers back
+                    feature_map_2 = outputs[idx + layers[1]] # take feature map from mth layer     
+
+                    # concat feature maps along depth dim
+                    x = torch.cat((feature_map_1, feature_map_2), 1)
+
+            ## SHORTCUT LAYERS
+            # from = n
+            # output = (feature map from prev layer) + (feature layer from n-layers back)
+            elif (module_type == "shortcut"):
+                from_ = int(module["from"])
+                x = outputs[idx-1] + outputs[idx+from_]           
+
+            ## YOLO LAYERS
+            # output = conv feature map containing bbox attributes along depth of 
+            #          feature map (attribute bboxes predicted are stacjed 1 by 1
+            #          along each other)
+            # so to access 3rd bbox at cell (6,9) requires index:
+            #          map[5, 6, 2*(5+C): 3*(5+C)], where C is n_classes
+            # this sucks
+            # another issue: detection happens at 3 different scales
+            #              ->dims of pred maps different
+            #              ->use predict_transform
+            elif (module_type == "yolo"):
+                # concat detection maps at three diff scales into one bit tensor (possible post transform)
+
+                # cannot init empty tensor, therefore:
+                # 1. delay collector init until first detection map
+                # 2. concat maps to it after subsequent detections             
+
+                anchors = self.module_list[idx][0].anchors
+                # get input dims and n_classes
+                in_dims = int(self.net_info["height"])
+                n_classes = int(module["classes"])
+
+                # transform
+                x = x.data
+                x = predict_transform(
+                    prediction=x, 
+                    in_dims=in_dims, 
+                    anchors=anchors, 
+                    n_classes=n_classes,
+                    CUDA=CUDA
+                )
+                # recall write=0 means collector hasnt been initatlised
+                if not write:
+                    detections = x
+                    write = 1
+                else:
+                    detections = torch.cat((detections, x), 1)
+            # save current output
+            outputs[idx] = x
+        return detections
