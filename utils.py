@@ -13,7 +13,7 @@ def predict_transform(prediction, in_dims, anchors, n_classes, CUDA=True):
     """
     batch_size = prediction.size(0)
     stride = in_dims // prediction.size(2)
-    grid_size = in_dims // stride
+    grid_size = prediction.shape[2]
     bbox_attrs = 5 + n_classes
     n_anchors = len(anchors)
 
@@ -53,13 +53,13 @@ def predict_transform(prediction, in_dims, anchors, n_classes, CUDA=True):
     anchors = torch.FloatTensor(anchors)
 
     if CUDA:
-        achors = anchors.cuda()
+        anchors = anchors.cuda()
 
     anchors = anchors.repeat(grid_size*grid_size, 1).unsqueeze(0)
     prediction[:,:,2:4] = torch.exp(prediction[:,:,2:4])*anchors
 
     # apply sigmoid activation to class scores
-    prediction[:,:,5:5+n_classes] = torch.sigmoid((prediction[:,:,5:+n_classes]))
+    prediction[:,:,5:5+n_classes] = torch.sigmoid((prediction[:,:,5:5+n_classes]))
 
     # resize detection map to size of input image
     # bbox attributes are sized according to feature map e.g. 13x13
