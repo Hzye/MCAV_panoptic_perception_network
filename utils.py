@@ -67,3 +67,32 @@ def predict_transform(prediction, in_dims, anchors, n_classes, CUDA=True):
     prediction[:,:,:4] *= stride
 
     return prediction
+
+def write_results(prediction, confidence, n_classes, nms_conf=0.4):
+    """
+    Objectness score thresholding and non-max suppression.
+
+    Input:
+    =prediction= tensor of size (batch_size) x (n_bboxes) x (4 bbox attrs + 1 obj score + 80 class scores)
+    """
+
+    ## object confidence thresholding
+
+    # prediction tensor contains info about Bx10647 bboxes
+    # for each bbox that has an objectness score below threshol:
+    # we set the value of its attr *entire row representing bbox) to zero
+    conf_mask = (prediction[:,:,4] > confidence).float().unsqueeze(2)
+    prediction = prediction*conf_mask
+
+    ## performing non-max suppression
+
+    # bbox attrs described by centre coords
+    # convert (centre_x, centre_y, height, width) -> (min_x, min_y, max_x, max_y)
+    box_corner = prediction.new(prediction.shape)
+    box_corner[:,:,0] = (prediction[:,:,0] - prediction[:,:,2]/2)
+    box_corner[:,:,1] = (prediction[:,:,1] - prediction[:,:,3]/2)
+    box_corner[:,:,2] = (prediction[:,:,0] + prediction[:,:,2]/2)
+    box_corner[:,:,3] = (prediction[:,:,1] + prediction[:,:,3]/2)
+    # replace in the prediction tensor
+    prediction[:,:,:4] = box_corner[:,:,:4]
+    
