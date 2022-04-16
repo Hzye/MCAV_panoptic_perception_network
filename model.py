@@ -298,3 +298,114 @@ class Net(nn.Module):
             # save current output
             outputs[idx] = x
         return detections
+
+    def load_weights(self, weightfile):
+        """
+        Load pre-trained weights.
+        """
+        fp = open(weightfile, "rb")
+
+        # first 5 values are header info
+        # 1. major version number
+        # 2. minor version number
+        # 3. subversion number
+        # 4,5. images seen by network during training
+        header = np.fromfile(fp, dtype=np.int32, count=5)
+        self.header = torch.from_numpy(header)
+        self.seen = self.header[3]
+
+        # rest of bits represent weights (stored as float32)
+        # weights belong to two types of layers - bn or conv
+        # these erights are stored exactly in same order as they appear in config
+        weights = np.fromfile(fp, dtype = np.float32)
+
+        # iterate over weights file, load weights into modules of network
+        pointer = 0 # use pointer to keep track of where in weights array we are
+        for idx in range(len(self.module_list)):
+            module_type = self.blocks[idx+1]["type"]
+
+            # we only care about conv layers
+            if (module_type == "convolutional"):
+                module = self.module_list[idx]
+                # check whether conv block has batch norm = t/f
+                try:
+                    batch_norm = int(self.blocks[idx+1]["batch_normalize"])
+                except:
+                    batch_norm = 0
+                
+                # pull out conv layer info
+                conv = module[0]
+
+                # for the case of having BATCH NORM
+                # order:
+                #   1. bn biases
+                #   2. bn weights
+                #   3. bn running mean
+                #   4. bn running var
+                #   5. conv weights * do later
+                if (batch_norm):
+                    # pull out batch norm info
+                    bn = module[1]
+
+                    # get no. of biases of batch norm layer
+                    # basically take first value from BatchNorm2d(n_bn_biases, ...)
+                    n_bn_biases = bn.bias.numel()
+
+                    # load biases/weights
+                    # take 'n_bn_biases' weights from the current pointer
+                    bn_biases = torch.from_numpy(weights[pointer:pointer+n_bn_biases])
+                    pointer += n_bn_biases # increment pointer to start of next set of biases
+
+                    bn_weights = torch.from_numpy(weights[pointer:pointer+n_bn_biases])
+                    pointer += n_bn_biases
+
+                    bn_running_mean = torch.from_numpy(weights[pointer:pointer+n_bn_biases])
+                    pointer += n_bn_biases
+
+                    bn_running_var = torch.from_numpy(weights[pointer:pointer+n_bn_biases])
+                    pointer += n_bn_biases
+
+                    # cast loaded weights into dims of model weights                
+                    bn_biases = bn_biases.view_as(bn.bias.data) # expect biases initialised as 0s
+                    bn_weights = bn_weights.view_as(bn.weight.data) # expect weight initialised as 1s
+                    bn_running_mean = bn_running_mean.view_as(bn.running_mean) # expect running mean initialised as 0s
+                    bn_running_var = bn_running_var.view_as(bn.running_var) # expect running var initialised as 1s
+
+                    # finally copy data to module
+                    bn.bias.data.copy_(bn_biases)
+                    bn.weight.data.copy_(bn_weights)
+                    bn.running_mean.copy_(bn_running_mean)
+                    bn.running_var.copy_(bn_running_var)
+
+                # for the case of NO BATCH NORM
+                # order:
+                #   1. conv biases
+                #   2. conv weights * do later
+                else:
+                    # find number of biases
+                    # basically take first value from Conv2d(n_bn_biases, ...)
+                    n_conv_biases = conv.bias.numel()
+
+                    # load biases
+                    conv_biases = torch.from_numpy(weights[pointer:pointer+n_conv_biases])
+                    pointer += n_conv_biases
+
+                    # cast biases into dims of model biases
+                    conv_biases = conv_biases.view_as(conv.bias.data)
+
+                    # copy data to module
+                    conv.bias.data.copy_(conv_biases)
+
+                # now load conv layer's weights 
+                # get n_weights first
+                n_conv_weights = conv.weight.numel()
+
+                # load weights
+                conv_weights = torch.from_numpy(weights[pointer:pointer+n_conv_weights])
+                pointer += n_conv_weights
+
+                # cast weights into dims of model weights
+                conv_weights = conv_weights.view_as(conv.weight.data)
+
+                # copy data to module
+                conv.weight.data.copy_(conv_weights)
