@@ -80,6 +80,34 @@ def unique(tensor):
     tensor_res.copy_(unique_tensor)
     return tensor_res
 
+def iou(box1, box2):
+    """
+    Returns intersection over union of two bounding boxes.
+    """
+    # get coords of bboxes
+    b1_x1, b1_y1, b1_x2, b1_y2 = box1[:,0], box1[:,1], box1[:,2], box1[:,3]
+    b2_x1, b2_y1, b2_x2, b2_y2 = box2[:,0], box2[:,1], box2[:,2], box2[:,3]
+
+    # get coords of intersection
+    intersect_x1 = torch.max(b1_x1, b2_x1)
+    intersect_y1 = torch.max(b1_y1, b2_y1)
+    intersect_x2 = torch.max(b1_x2, b2_x2)
+    intersect_y2 = torch.max(b1_y2, b2_y2)
+
+    # intersection area
+    # clamp to > 0
+    intersect_area = torch.clamp(intersect_x2 - intersect_x1+1, min=0)*torch.clamp(intersect_y2 - intersect_y1+1, min=0)
+
+    # union area
+    b1_area = (b1_x2 - b1_x1)*(b1_y2 - b1_y1)
+    b2_area = (b2_x2 - b2_x1)*(b2_y2 - b2_y1)
+    union_area = b1_area + b2_area - intersect_area
+
+    # compute iou
+    iou = intersect_area/union_area
+
+    return iou    
+
 def write_results(prediction, confidence, n_classes, nms_conf=0.4):
     """
     Objectness score thresholding and non-max suppression.
@@ -157,4 +185,24 @@ def write_results(prediction, confidence, n_classes, nms_conf=0.4):
 
             ## non max suppression
             for det in range(n_detections):
-                pass
+                # get IOUs of all boxes that come after the one we are looking at in loop
+                # use try except because bboxes may be removed from image_pred_class
+                try:
+                    # ious indexed by det with all bboxes having indices > det
+                    ious = bbox_iou(image_pred_class[det].unsqueeze(0), image_pred_class[det+1:])
+                except ValueError:
+                    break
+
+                except IndexError:
+                    break
+                
+                # ever iteration, if any bboxes that have indices > det also have iou 
+                # (with box indexed by det) larger than threshold nms_thresh, eliminate it
+
+                # zero out all detections that have iou > threshold
+                iou_mask = (ious < nms_conf).float().unsqueeze(1)
+                image_pred_class[det+1:] *= iou_mask
+
+                # remove non-zero entries
+                non_zero_idx = torch.nonzero(image_pred_class[:,4]).squeeze()
+                image_pred_class = image_pred_class[non_zero_idx].view(-1,7)
