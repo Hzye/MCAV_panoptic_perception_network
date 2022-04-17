@@ -80,7 +80,7 @@ def unique(tensor):
     tensor_res.copy_(unique_tensor)
     return tensor_res
 
-def iou(box1, box2):
+def bbox_iou(box1, box2):
     """
     Returns intersection over union of two bounding boxes.
     """
@@ -206,3 +206,32 @@ def write_results(prediction, confidence, n_classes, nms_conf=0.4):
                 # remove non-zero entries
                 non_zero_idx = torch.nonzero(image_pred_class[:,4]).squeeze()
                 image_pred_class = image_pred_class[non_zero_idx].view(-1,7)
+
+            # output tensor (n_true_preds_in_all_images x 8)
+            # 8 attrs are:
+            #   - idx of image in batch to which detection belongs to
+            #   - 4 corner coords
+            #   - objectness score
+            #   - score of class with max confidence
+            #   - idx of class with max confidence
+
+            # do not init output tensor unless we have a detection to assign to
+            # check write flag
+            batch_idx = image_pred_class.new(image_pred_class.size(0), 1).fill_(idx)
+            
+            # repeat batch_id for as many detections of class det in image
+            seq = batch_idx, image_pred_class
+
+            if not write:
+                output = torch.cat(seq,1)
+                write = True
+            else:
+                pre_output = torch.cat(seq,1)
+                output = torch.cat((output, pre_output))
+
+    # check whether otuput has been init at all
+    # if no then there hasnt been a detection in any images in the batch  
+    try:
+        return output
+    except:
+        return 0
