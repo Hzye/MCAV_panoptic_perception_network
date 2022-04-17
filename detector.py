@@ -69,8 +69,8 @@ def arg_parse():
         type=str
     )
     parser.add_argument(
-        "--reso",
-        dest="reso",
+        "--res",
+        dest="res",
         help="Input resolution of network. Increase for better acc, but slower runtime.",
         default="416",
         type=str
@@ -88,3 +88,22 @@ CUDA = torch.cuda.is_available()
 
 n_classes = 80
 classes = load_classes("data/coco.names")
+
+
+## init network and load weights
+print("Loading network...")
+model = Net(args.cfgfile)
+model.load_weights(args.weightsfile)
+print("Network loaded!")
+
+model.net_info["height"] = args.res
+in_dims = int(model.net_info["height"])
+assert in_dims % 32 == 0
+assert in_dims > 32
+
+# check for CUDA availability
+if CUDA:
+    model.cuda()
+
+# set model in eval mode
+model.eval()
