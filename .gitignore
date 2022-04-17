@@ -1,2 +1,3 @@
 
 *.pyc
+weights/yolov3.weights
