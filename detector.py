@@ -30,10 +30,10 @@ def arg_parse():
         type=str
     )
     parser.add_argument(
-        "--dest",
-        dest="dest",
+        "--dets",
+        dest="dets",
         help="Indiv image or directory to save detections to.",
-        default="dest",
+        default="dets",
         type=str
     )
     parser.add_argument(
@@ -86,4 +86,5 @@ nms_thresh = float(args.nms_thresh)
 start = 0
 CUDA = torch.cuda.is_available()
 
-
+n_classes = 80
+classes = load_classes("data/coco.names")
