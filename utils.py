@@ -68,6 +68,18 @@ def predict_transform(prediction, in_dims, anchors, n_classes, CUDA=True):
 
     return prediction
 
+def unique(tensor):
+    """
+    Returns classes present in any given image.
+    """
+    tensor_np = tensor.cpu().numpy()
+    unique_np = np.unique(tensor_np)
+    unique_tensor = torch.from_numpy(unique_np)
+
+    tensor_res = tensor.new(unique_tensor.shape)
+    tensor_res.copy_(unique_tensor)
+    return tensor_res
+
 def write_results(prediction, confidence, n_classes, nms_conf=0.4):
     """
     Objectness score thresholding and non-max suppression.
@@ -95,4 +107,54 @@ def write_results(prediction, confidence, n_classes, nms_conf=0.4):
     box_corner[:,:,3] = (prediction[:,:,1] + prediction[:,:,3]/2)
     # replace in the prediction tensor
     prediction[:,:,:4] = box_corner[:,:,:4]
-    
+
+    # cannot vectorise confidence thresholding and nms
+    # loop over first dim of prediction which contains indexes of images in a batch
+    batch_size = prediction.size(0)
+
+    write = False # indicates if we have initialised 'output' 
+    # output collects filtered detections across entire batch
+
+    for idx in range(batch_size):
+        image_pred = prediction[idx] # image tensor
+
+        # each bbox row has 85 attrs, last 80 are class scores (%)
+        # so remove all class scores for each row except one with max value
+        # save indices + classes of max value classes
+        max_conf, max_conf_score = torch.max(image_pred[:,5:5+n_classes], 1)
+        max_conf = max_conf.float().unsqueeze(1)
+        max_conf_score = max_conf_score.float().unsqueeze(1)
+        seq = (image_pred[:,:5], max_conf, max_conf_score)
+        image_pred = torch.cat(seq, 1)
+
+        # remove filtered object confidences
+        non_zero_ind = (torch.nonzer(image_pred[:,4]))
+
+        # if there are no detection, skip rest of loop body for current image
+        try:
+            image_pred_ = image_pred[non_zero_ind.squeeze(),:].view(-1,7)
+        except:
+            continue
+
+        if image_pred_.shape[0] == 0:
+            continue
+
+        # get classes detected in current image
+        im_classes = unique(image_pred_[:,-1]) # all except last element - holds class index
+
+        ## classwise non max suppression
+        for classes in im_classes:
+            # extract detections of particular class (classes)
+            class_mask = image_pred_*(image_pred_[:,-1] == classes).float().unsqueeze(1)
+            class_mask_idx = torch.nonzerO(class_mask[:-2]).unsqueeze() # all except last 2 elements
+            image_pred_class = image_pred_[class_mask_idx].view(-1,7) # (best fit) x 7
+
+            # sort such that first element has max objectness confidence
+            conf_sort_idx = torch.sort(image_pred_class[:,4], descending=True)[1]
+            image_pred_class = image_pred_class[conf_sort_idx]
+            
+            n_detections = image_pred_class.size(0)
+
+            ## non max suppression
+            for det in range(n_detections):
+                pass
