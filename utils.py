@@ -235,3 +235,11 @@ def write_results(prediction, confidence, n_classes, nms_conf=0.4):
         return output
     except:
         return 0
+
+def load_classes(namesfile):
+    """
+    Returns dictionary which maps indeces of each class to string of its name.
+    """
+    fp = open(namesfile, "r")
+    names = fp.read().split("\n")[:-1]
+    return names
