@@ -259,4 +259,12 @@ def norm_with_padding(img, in_dims):
 
     return canvas
 
-
+def prep_image(img, in_dims):
+    """
+    Prep image for inputting into neural network
+    """
+    img= cv2.resize(img, (in_dims, in_dims))
+    img = img[:,:,::-1].transpose((2,0,1)).copy()
+    img = torch.from_numpy(img).float().div(255.0).unsqueeze(0)
+    
+    return img
