@@ -243,3 +243,20 @@ def load_classes(namesfile):
     fp = open(namesfile, "r")
     names = fp.read().split("\n")[:-1]
     return names
+
+def norm_with_padding(img, in_dims):
+    """
+    Resizes image with unchanged aspect ratio using padding (128,128,128).
+    """
+    img_w, img_h = img.shape[1], img.shape[0]
+    w, h = in_dims
+    new_w = int(img_w*min(w/img_w, h/img_h))
+    new_h = int(img_h*min(w/img_w, h/img_h))
+    resized_image = cv2.resize(img, (new_h, new_w), interpolation=cv2.INTER_CUBIC)
+
+    canvas = np.full((in_dims[1], in_dims[0], 3), 128)
+    canvas[(h-new_h)//2:(h-new_h)//2 + new_h, (w-new_w)//2:(w-new_w)//2 + new_w, :] = resized_image
+
+    return canvas
+
+
