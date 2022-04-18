@@ -107,3 +107,15 @@ if CUDA:
 
 # set model in eval mode
 model.eval()
+
+## read input images
+read_dir = time.time()
+# Detection
+try:
+    im_list = [osp.join(osp.realpath('.'), images, img) for img in os.listdir(images)]
+except NotADirectoryError:
+    imlist = []
+    imlist.append(osp.join(osp.realpath('.'), images))
+except FileNotFoundError:
+    print("No file or directory with the name {}".format(images))
+    exit()
