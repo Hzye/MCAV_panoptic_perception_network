@@ -109,13 +109,33 @@ if CUDA:
 model.eval()
 
 ## read input images
-read_dir = time.time()
+read_dir = time.time() # checkpoint used to measure time
 # Detection
 try:
-    im_list = [osp.join(osp.realpath('.'), images, img) for img in os.listdir(images)]
+    img_list = [osp.join(osp.realpath('.'), images, img) for img in os.listdir(images)]
 except NotADirectoryError:
-    imlist = []
-    imlist.append(osp.join(osp.realpath('.'), images))
+    img_list = []
+    img_list.append(osp.join(osp.realpath('.'), images))
 except FileNotFoundError:
     print("No file or directory with the name {}".format(images))
     exit()
+
+# if directory to save detections doesnt exist, create it
+if not os.path.exists(args.dets):
+    os.makedirs(args.dets)
+
+# use opencv to load images
+load_batch = time.time() # another checkpoint
+loaded_imgs = [cv2.imread(img) for img in img_list]
+
+# opencv loads images as np array with dims BxGxR
+# keep list of original images and list im_dim_list containing dims of original images
+img_batches = list(map(prep_image, loaded_imgs, [in_dims for img in range(len(img_list))]))
+
+# list containing dims of original images
+im_dims_list = [(img.shape[1], img.shape[0]) for img in loaded_imgs]
+im_dims_list = torch.FloatTensor(im_dims_list).repeat(1,2)
+
+if CUDA:
+    im_dims_list = im_dims_list.cuda()
+
