@@ -139,3 +139,12 @@ im_dims_list = torch.FloatTensor(im_dims_list).repeat(1,2)
 if CUDA:
     im_dims_list = im_dims_list.cuda()
 
+## create batches
+leftover = 0
+if (len(im_dims_list) % batch_size):
+    leftover = 1
+
+if batch_size != 1:
+    n_batches = len(img_list)//batch_size + leftover
+    img_batches = [torch.cat((img_batches[i*batch_size:min((i+1)*batch_size, len(img_batches))])) for i in range(n_batches)]
+    
