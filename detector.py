@@ -204,3 +204,14 @@ for idx, batch in enumerate(img_batches):
     # avoids misleading end = time.time()
     if CUDA:
         torch.cuda.synchronize()
+
+## drawing bboxes on images
+# check whether there has been a single det has been made or not
+# if no, exit program
+try:
+    output
+except NameError:
+    print("No detections were made")
+    exit()
+
+# 
