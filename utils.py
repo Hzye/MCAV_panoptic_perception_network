@@ -156,7 +156,7 @@ def write_results(prediction, confidence, n_classes, nms_conf=0.4):
         image_pred = torch.cat(seq, 1)
 
         # remove filtered object confidences
-        non_zero_ind = (torch.nonzer(image_pred[:,4]))
+        non_zero_ind = (torch.nonzero(image_pred[:,4]))
 
         # if there are no detection, skip rest of loop body for current image
         try:
@@ -168,13 +168,13 @@ def write_results(prediction, confidence, n_classes, nms_conf=0.4):
             continue
 
         # get classes detected in current image
-        im_classes = unique(image_pred_[:,-1]) # all except last element - holds class index
+        img_classes = unique(image_pred_[:,-1]) # all except last element - holds class index
 
         ## classwise non max suppression
-        for classes in im_classes:
+        for classes in img_classes:
             # extract detections of particular class (classes)
             class_mask = image_pred_*(image_pred_[:,-1] == classes).float().unsqueeze(1)
-            class_mask_idx = torch.nonzerO(class_mask[:-2]).unsqueeze() # all except last 2 elements
+            class_mask_idx = torch.nonzero(class_mask[:,-2]).squeeze() # all except last 2 elements
             image_pred_class = image_pred_[class_mask_idx].view(-1,7) # (best fit) x 7
 
             # sort such that first element has max objectness confidence

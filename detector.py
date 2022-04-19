@@ -93,7 +93,7 @@ classes = load_classes("data/coco.names")
 ## init network and load weights
 print("Loading network...")
 model = Net(args.cfgfile)
-model.load_weights(args.weightsfile)
+model.load_weights(args.weights)
 print("Network loaded!")
 
 model.net_info["height"] = args.res
@@ -166,7 +166,9 @@ for idx, batch in enumerate(img_batches):
     if CUDA:
         batch = batch.cuda()
     
-    prediction = model(Variable(batch, volatile=True), CUDA)
+    with torch.no_grad():
+        prediction = model(Variable(batch), CUDA)
+        
     prediction = write_results(
         prediction=prediction,
         confidence=confidence,
@@ -250,9 +252,24 @@ def draw_test_bbox(x, results, colour):
     cv2.putText(img, label, (c1[0], c1[1]+t_size[1]+4), cv2.FONT_HERSHEY_PLAIN, 1, [255,255,255], 1)
     return img
 
+def writee(x, results):
+    c1 = tuple(x[1:3].int())
+    c2 = tuple(x[3:5].int())
+    img = results[int(x[0])]
+    cls = int(x[-1])
+    color = random.choice(colours)
+    label = "{0}".format(classes[cls])
+    cv2.rectangle(img, c1, c2,color, 1)
+    t_size = cv2.getTextSize(label, cv2.FONT_HERSHEY_PLAIN, 1 , 1)[0]
+    c2 = c1[0] + t_size[0] + 3, c1[1] + t_size[1] + 4
+    cv2.rectangle(img, c1, c2,color, -1)
+    cv2.putText(img, label, (c1[0], c1[1] + t_size[1] + 4), cv2.FONT_HERSHEY_PLAIN, 1, [225,255,255], 1);
+    return img
+
 # draw bboxes ON image
 # modify loaded_imgs inplace
-list(map(lambda x: write(x, loaded_imgs), output))
+#list(map(lambda x: draw_test_bbox(x, loaded_imgs, colours), output))
+list(map(lambda x: writee(x, loaded_imgs), output))
 
 # each img saved by prefixing "det_" infront of image name
 # create a list of addresses to which we sasve detection images to
