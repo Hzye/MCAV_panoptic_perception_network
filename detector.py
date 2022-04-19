@@ -239,11 +239,12 @@ colours = pkl.load(open("pallete", "rb"))
 # function to draw boxes
 draw = time.time()
 
-def draw_test_bbox(x, results, colour):
+def draw_test_bbox(x, results):
     c1 = tuple(x[1:3].int())
     c2 = tuple(x[3:5].int())
     img = results[int(x[0])]
     img_class = int(x[-1])
+    colour = random.choice(colours)
     label = "{0}".format(classes[img_class]) # display detected class
     cv2.rectangle(img, c1, c2, colour, 1)
     t_size = cv2.getTextSize(label, cv2.FONT_HERSHEY_PLAIN, 1, 1)[0]
@@ -252,24 +253,10 @@ def draw_test_bbox(x, results, colour):
     cv2.putText(img, label, (c1[0], c1[1]+t_size[1]+4), cv2.FONT_HERSHEY_PLAIN, 1, [255,255,255], 1)
     return img
 
-def writee(x, results):
-    c1 = tuple(x[1:3].int())
-    c2 = tuple(x[3:5].int())
-    img = results[int(x[0])]
-    cls = int(x[-1])
-    color = random.choice(colours)
-    label = "{0}".format(classes[cls])
-    cv2.rectangle(img, c1, c2,color, 1)
-    t_size = cv2.getTextSize(label, cv2.FONT_HERSHEY_PLAIN, 1 , 1)[0]
-    c2 = c1[0] + t_size[0] + 3, c1[1] + t_size[1] + 4
-    cv2.rectangle(img, c1, c2,color, -1)
-    cv2.putText(img, label, (c1[0], c1[1] + t_size[1] + 4), cv2.FONT_HERSHEY_PLAIN, 1, [225,255,255], 1);
-    return img
-
 # draw bboxes ON image
 # modify loaded_imgs inplace
 #list(map(lambda x: draw_test_bbox(x, loaded_imgs, colours), output))
-list(map(lambda x: writee(x, loaded_imgs), output))
+list(map(lambda x: draw_test_bbox(x, loaded_imgs), output))
 
 # each img saved by prefixing "det_" infront of image name
 # create a list of addresses to which we sasve detection images to

@@ -237,34 +237,31 @@ def write_results(prediction, confidence, n_classes, nms_conf=0.4):
         return 0
 
 def load_classes(namesfile):
-    """
-    Returns dictionary which maps indeces of each class to string of its name.
-    """
     fp = open(namesfile, "r")
     names = fp.read().split("\n")[:-1]
     return names
 
-def norm_with_padding(img, in_dims):
-    """
-    Resizes image with unchanged aspect ratio using padding (128,128,128).
-    """
+def norm_with_padding(img, inp_dim):
+    '''resize image with unchanged aspect ratio using padding'''
     img_w, img_h = img.shape[1], img.shape[0]
-    w, h = in_dims
-    new_w = int(img_w*min(w/img_w, h/img_h))
-    new_h = int(img_h*min(w/img_w, h/img_h))
-    resized_image = cv2.resize(img, (new_h, new_w), interpolation=cv2.INTER_CUBIC)
+    w, h = inp_dim
+    new_w = int(img_w * min(w/img_w, h/img_h))
+    new_h = int(img_h * min(w/img_w, h/img_h))
+    resized_image = cv2.resize(img, (new_w,new_h), interpolation = cv2.INTER_CUBIC)
+    
+    canvas = np.full((inp_dim[1], inp_dim[0], 3), 128)
 
-    canvas = np.full((in_dims[1], in_dims[0], 3), 128)
-    canvas[(h-new_h)//2:(h-new_h)//2 + new_h, (w-new_w)//2:(w-new_w)//2 + new_w, :] = resized_image
-
+    canvas[(h-new_h)//2:(h-new_h)//2 + new_h,(w-new_w)//2:(w-new_w)//2 + new_w,  :] = resized_image
+    
     return canvas
 
-def prep_image(img, in_dims):
+def prep_image(img, inp_dim):
     """
-    Prep image for inputting into neural network
+    Prepare image for inputting to the neural network. 
+    
+    Returns a Variable 
     """
-    img= cv2.resize(img, (in_dims, in_dims))
+    img = (norm_with_padding(img, (inp_dim, inp_dim)))
     img = img[:,:,::-1].transpose((2,0,1)).copy()
     img = torch.from_numpy(img).float().div(255.0).unsqueeze(0)
-    
     return img
