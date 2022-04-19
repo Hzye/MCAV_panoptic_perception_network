@@ -133,15 +133,15 @@ loaded_imgs = [cv2.imread(img) for img in img_list]
 img_batches = list(map(prep_image, loaded_imgs, [in_dims for img in range(len(img_list))]))
 
 # list containing dims of original images
-im_dims_list = [(img.shape[1], img.shape[0]) for img in loaded_imgs]
-im_dims_list = torch.FloatTensor(im_dims_list).repeat(1,2)
+img_dims_list = [(img.shape[1], img.shape[0]) for img in loaded_imgs]
+img_dims_list = torch.FloatTensor(img_dims_list).repeat(1,2)
 
 if CUDA:
-    im_dims_list = im_dims_list.cuda()
+    img_dims_list = img_dims_list.cuda()
 
 ## create batches
 leftover = 0
-if (len(im_dims_list) % batch_size):
+if (len(img_dims_list) % batch_size):
     leftover = 1
 
 if batch_size != 1:
@@ -211,7 +211,69 @@ for idx, batch in enumerate(img_batches):
 try:
     output
 except NameError:
-    print("No detections were made")
+    print("No detections were made.")
     exit()
 
-# 
+# transform bbox corner attrs to match padded images
+img_dims_list = torch.index_select(img_dims_list, 0, output[:,0].long())
+scaling_factor = torch.min(in_dims/img_dims_list,1)[0].view(-1,1)
+
+output[:,[1,3]] -= (in_dims - scaling_factor*img_dims_list[:,0].view(-1,1))/2
+output[:,[2,4]] -= (in_dims - scaling_factor*img_dims_list[:,1].view(-1,1))/2
+
+# undo rescaling to get coords of bbox on original image
+output[:,1:5] /= scaling_factor
+
+# clip bboxes that may have boundaries outside image
+for i in range(output.shape[0]):
+    output[i, [1,3]] = torch.clamp(output[i, [1,3]], 0.0, img_dims_list[i,0])
+    output[i, [2,4]] = torch.clamp(output[i, [2,4]], 0.0, img_dims_list[i,1])
+
+# colours for bboxes
+output_recast = time.time()
+class_load = time.time()
+colours = pkl.load(open("pallete", "rb"))
+
+# function to draw boxes
+draw = time.time()
+
+def draw_test_bbox(x, results, colour):
+    c1 = tuple(x[1:3].int())
+    c2 = tuple(x[3:5].int())
+    img = results[int(x[0])]
+    img_class = int(x[-1])
+    label = "{0}".format(classes[img_class]) # display detected class
+    cv2.rectangle(img, c1, c2, colour, 1)
+    t_size = cv2.getTextSize(label, cv2.FONT_HERSHEY_PLAIN, 1, 1)[0]
+    c2 = c1[0]+t_size[0]+3, c1[1]+t_size[1]+4
+    cv2.rectangle(img, c1, c2, colour, -1)
+    cv2.putText(img, label, (c1[0], c1[1]+t_size[1]+4), cv2.FONT_HERSHEY_PLAIN, 1, [255,255,255], 1)
+    return img
+
+# draw bboxes ON image
+# modify loaded_imgs inplace
+list(map(lambda x: write(x, loaded_imgs), output))
+
+# each img saved by prefixing "det_" infront of image name
+# create a list of addresses to which we sasve detection images to
+det_names = pd.Series(img_list).apply(lambda x: "{}/det_{}".format(args.dets, x.split("/")[-1]))
+
+# write images with dets to address in det_names
+list(map(cv2.imwrite, det_names, loaded_imgs))
+end = time.time()
+
+# prit a summary of times
+print("SUMMARY")
+print("----------------------------------------------------------")
+print("{:25s}: {}".format("Task", "Time Taken (in seconds)"))
+print()
+print("{:25s}: {:2.3f}".format("Reading addresses", load_batch - read_dir))
+print("{:25s}: {:2.3f}".format("Loading batch", start_det_loop - load_batch))
+print("{:25s}: {:2.3f}".format("Detection (" + str(len(img_list)) +  " images)", output_recast - start_det_loop))
+print("{:25s}: {:2.3f}".format("Output Processing", class_load - output_recast))
+print("{:25s}: {:2.3f}".format("Drawing Boxes", end - draw))
+print("{:25s}: {:2.3f}".format("Average time_per_img", (end - load_batch)/len(img_list)))
+print("----------------------------------------------------------")
+
+
+torch.cuda.empty_cache()
