@@ -180,7 +180,8 @@ for idx, batch in enumerate(img_batches):
     if type(prediction) == int:
         for img_num, image in enumerate(img_list[idx*batch_size:min((idx+1)*batch_size, len(img_list))]):
             img_id = idx*batch_size + img_num
-            print("{0:20s} predicted in {1:6.3f} seconds".format(image.split("/")[-1], (end - start)/batch_size))
+            #print("here: {}".format(image))
+            print("{0:20s} predicted in {1:6.3f} seconds".format(image.split("\\")[-1], (end - start)/batch_size))
             print("{0:20s} {1:s}".format("Objects Detected:", ""))
             print("----------------------------------------------------------")
         continue
@@ -198,7 +199,8 @@ for idx, batch in enumerate(img_batches):
     for img_num, image in enumerate(img_list[idx*batch_size:min((idx+1)*batch_size, len(img_list))]):
         img_id = idx*batch_size + img_num
         objs = [classes[int(x[-1])] for x in output if int(x[0])==img_id]
-        print("{0:20s} predicted in {1:6.3f} seconds".format(image.split("/")[-1], (end - start)/batch_size))
+        #print("here: {}".format(image))
+        print("{0:20s} predicted in {1:6.3f} seconds".format(image.split("\\")[-1], (end - start)/batch_size))
         print("{0:20s} {1:s}".format("Objects Detected:", " ".join(objs)))
         print("----------------------------------------------------------")
     
@@ -260,10 +262,11 @@ list(map(lambda x: draw_test_bbox(x, loaded_imgs), output))
 
 # each img saved by prefixing "det_" infront of image name
 # create a list of addresses to which we sasve detection images to
-det_names = pd.Series(img_list).apply(lambda x: "{}/det_{}".format(args.dets, x.split("/")[-1]))
+det_names = pd.Series(img_list).apply(lambda x: "{}/det_{}".format(args.dets, x.split("\\")[-1]))
 
 # write images with dets to address in det_names
 list(map(cv2.imwrite, det_names, loaded_imgs))
+print(det_names)
 end = time.time()
 
 # prit a summary of times
