@@ -78,12 +78,14 @@ def arg_parse():
 
     return parser.parse_args()
 
+# store appropirate argument parses into variables
+# define other important variables
 args = arg_parse()
-images = args.images
-batch_size = int(args.bs)
+images = args.images # dir/image 
+batch_size = int(args.bs) 
 confidence = float(args.confidence)
 nms_thresh = float(args.nms_thresh)
-start = 0
+start = 0 # for timing
 CUDA = torch.cuda.is_available()
 
 n_classes = 80
