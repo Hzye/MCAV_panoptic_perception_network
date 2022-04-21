@@ -54,10 +54,10 @@ For example: model_testing.ipynb is used to test bits and pieces of the model.py
 2. Open terminal, and cd to this project's repository.
 
 #### For image detection
-3. Run: ```python detection_image.py --images images --dets dets```. This will output run times of various sections of the detection process and save output images to a new 'dets' folder.
+3. Run: ```python detector_image.py --images images --dets dets```. This will output run times of various sections of the detection process and save output images to a new 'dets' folder.
 
 #### For live webcam detection
-3. Run: ```python detection_video.py```. This will output two live video feeds, one of the raw webcam input and one with detection bounding boxes.
+3. Run: ```python detector_video.py```. This will output two live video feeds, one of the raw webcam input and one with detection bounding boxes.
 4. Press 'q' on the keyboard to end detection.
 
 
