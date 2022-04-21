@@ -1,4 +1,4 @@
 
 *.pyc
-weights
-dets
+weights/
+dets/
