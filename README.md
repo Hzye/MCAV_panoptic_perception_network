@@ -33,7 +33,7 @@ Helper functions.
 ### detector_image.py
 Runs the detection network on images.
 
-1. ```arg_parse()```: Creates arguments to pass into detector_image from shell.
+1. ```arg_parse()```: Creates arguments to pass into detector_image from terminal.
 2. Runs network over batches of images.
 3. Draws bounding on input images and saves them to new folder 'dets'.
 
@@ -53,10 +53,10 @@ For example: model_testing.ipynb is used to test bits and pieces of the model.py
 1. Make sure you have downloaded the pretrained weights from above and have saved them into a new folder 'weights'.
 2. Open terminal, and cd to this project's repository.
 
-For image detection
+#### For image detection
 3. Run: ```python detection_image.py --images images --dets dets```. This will output run times of various sections of the detection process and save output images to a new 'dets' folder.
 
-For live webcam detection
+#### For live webcam detection
 3. Run: ```python detection_video.py```. This will output two live video feeds, one of the raw webcam input and one with detection bounding boxes.
 4. Press 'q' on the keyboard to end detection.
 
