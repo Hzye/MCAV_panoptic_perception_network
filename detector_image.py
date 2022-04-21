@@ -18,7 +18,7 @@ from utils import *
 
 def arg_parse():
     """
-    Use to parse arguments to the 'detect' module.
+    Use to parse arguments to the 'detector_image' module.
     """
     parser = argparse.ArgumentParser(description="YOLOv3 Detection Module")
 
