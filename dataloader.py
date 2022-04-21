@@ -147,7 +147,7 @@ class DetectionDataset(Dataset):
 
         return sample
 
-
+## transforms
 class Rescale(object):
     """
     Rescale the image in a sample to a given size.
@@ -215,6 +215,7 @@ testing = DetectionDataset(
 )
 fig = plt.figure()
 
+# check shapes
 print("# image_shape    n_objects")
 for i in range(len(testing)):
     sample = testing[i]
@@ -226,6 +227,7 @@ for i in range(len(testing)):
     ax.axis('off')
     draw_bbox(**sample)
 
+## data loader
 transformed_train_data = DetectionDataset(
     label_dict=filtered_labels,
     root_dir='images/',
