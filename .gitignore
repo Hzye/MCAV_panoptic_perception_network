@@ -5,3 +5,9 @@ dets/
 dets/det_0000f77c-6257be58.jpg
 dets/det_0000f77c-62c2a288.jpg
 dets/det_dog-cycle-car.png
+annotations/captions_train2017.json
+annotations/captions_val2017.json
+annotations/instances_train2017.json
+annotations/instances_val2017.json
+annotations/person_keypoints_train2017.json
+annotations/person_keypoints_val2017.json
