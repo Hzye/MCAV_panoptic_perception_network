@@ -2,3 +2,6 @@
 *.pyc
 weights/
 dets/
+dets/det_0000f77c-6257be58.jpg
+dets/det_0000f77c-62c2a288.jpg
+dets/det_dog-cycle-car.png
