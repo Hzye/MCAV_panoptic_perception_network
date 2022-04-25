@@ -184,6 +184,24 @@ class Rescale(object):
 
         return {"image": image, "categories": categories, "bboxes": bboxes}
 
+class Normalise(object):
+    """
+    Normalise pixel values.
+    """
+    def __init__(self, mean, std):
+        # ensure input mean and std are integers or floats
+        assert isinstance(mean, (int, float))
+        assert isinstance(std, (int, float))
+        self.mean = mean
+        self.std = std
+
+    def __call__(self, sample):
+        image, categories, bboxes = sample["image"], sample["categories"], sample["bboxes"]
+
+        image = (image - self.mean)/self.std
+
+        return {"image": image, "categories": categories, "bboxes": bboxes} 
+
 class ToTensor(object):
     """
     Convert ndarrays in sample to Tensors.
