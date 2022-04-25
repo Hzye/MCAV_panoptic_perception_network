@@ -205,44 +205,44 @@ class ToTensor(object):
 
 
 
-## filter labels
-filtered_labels = filter_labels("det_train_shortened.json")
+# ## filter labels
+# filtered_labels = filter_labels("det_train_shortened.json")
 
-## load custom dataset
-testing = DetectionDataset(
-    label_dict=filtered_labels,
-    root_dir="./images/",
-)
-fig = plt.figure()
+# # ## load custom dataset
+# # testing = DetectionDataset(
+# #     label_dict=filtered_labels,
+# #     root_dir="./images/",
+# # )
+# # fig = plt.figure()
 
-# check shapes
-print("# image_shape    n_objects")
-for i in range(len(testing)):
-    sample = testing[i]
+# # # check shapes
+# # print("# image_shape    n_objects")
+# # for i in range(len(testing)):
+# #     sample = testing[i]
 
-    print(i, sample["image"].shape, len(sample["categories"]))
+# #     print(i, sample["image"].shape, len(sample["categories"]))
 
-    ax = plt.subplot(1, 2, i+1)
-    ax.set_title('Sample #{}'.format(i))
-    ax.axis('off')
-    draw_bbox(**sample)
+# #     ax = plt.subplot(1, 2, i+1)
+# #     ax.set_title('Sample #{}'.format(i))
+# #     ax.axis('off')
+# #     draw_bbox(**sample)
 
-## data loader
-transformed_train_data = DetectionDataset(
-    label_dict=filtered_labels,
-    root_dir='images/',
-    transform=transforms.Compose([
-        transforms.Normalize(
-        mean=[0.485, 0.456, 0.406],
-        std=[0.229, 0.224, 0.255]),
-        Rescale(256),
-        ToTensor()
-    ])
-)
+# ## data loader
+# transformed_train_data = DetectionDataset(
+#     label_dict=filtered_labels,
+#     root_dir='images/',
+#     transform=transforms.Compose([
+#         transforms.Normalize(
+#         mean=[0.485, 0.456, 0.406],
+#         std=[0.229, 0.224, 0.255]),
+#         Rescale(256),
+#         ToTensor()
+#     ])
+# )
 
-train_loader = DataLoader(
-    transformed_train_data,
-    batch_size=2,
-    shuffle=True,
-    num_workers=0
-)
+# train_loader = DataLoader(
+#     transformed_train_data,
+#     batch_size=2,
+#     shuffle=True,
+#     num_workers=0
+# )
