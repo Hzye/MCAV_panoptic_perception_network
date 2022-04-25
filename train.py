@@ -8,29 +8,11 @@ import torch.nn.functional as F
 import torch.optim as optim
 
 from model import *
-from dataloader import *
+from dataset import *
+
 
 ## filter labels
 filtered_labels = filter_labels("det_train_shortened.json")
-
-## load custom dataset
-testing = DetectionDataset(
-    label_dict=filtered_labels,
-    root_dir="./images/",
-)
-# fig = plt.figure()
-
-# check shapes
-# print("# image_shape    n_objects")
-# for i in range(len(testing)):
-#     sample = testing[i]
-
-#     print(i, sample["image"].shape, len(sample["categories"]))
-
-#     ax = plt.subplot(1, 2, i+1)
-#     ax.set_title('Sample #{}'.format(i))
-#     ax.axis('off')
-#     draw_bbox(**sample)
 
 ## data loader
 transformed_train_data = DetectionDataset(
@@ -52,7 +34,7 @@ train_loader = DataLoader(
     num_workers=0
 )
 
-net = Net()
+net = Net(cfgfile="cfg/model.cfg")
 optimizer = optim.SGD(net.parameters(), lr=0.001, momentum=0.9)
 
 
