@@ -112,8 +112,9 @@ model.eval()
 
 ## read input images
 read_dir = time.time() # checkpoint used to measure time
-# Detection
-try:
+
+# store list of image names in img_List
+try: 
     img_list = [osp.join(osp.realpath('.'), images, img) for img in os.listdir(images)]
 except NotADirectoryError:
     img_list = []
@@ -126,30 +127,53 @@ except FileNotFoundError:
 if not os.path.exists(args.dets):
     os.makedirs(args.dets)
 
-# use opencv to load images
+
 load_batch = time.time() # another checkpoint
+
+# load image pixel values into list loaded_imgs
 loaded_imgs = [cv2.imread(img) for img in img_list]
 
 # opencv loads images as np array with dims BxGxR
-# keep list of original images and list im_dim_list containing dims of original images
+# use prep_image to:
+#   1. pad the image  
+#   2. swap dims to correct order
+# save transformed images to list img_batches
 img_batches = list(map(prep_image, loaded_imgs, [in_dims for img in range(len(img_list))]))
 
-# list containing dims of original images
+# save original dimensions of images in list img_dims_list
 img_dims_list = [(img.shape[1], img.shape[0]) for img in loaded_imgs]
 img_dims_list = torch.FloatTensor(img_dims_list).repeat(1,2)
+
+# print("img_list:")
+# for img in img_list:
+#     print(img)
+# print("loaded_imgs")
+# for img in loaded_imgs:
+#     print(img)
+# print("img_batches")
+# for img in img_batches:
+#     print(img.shape)
+# print("img_dims_list")
+# for img in img_dims_list:
+#     print(img)
 
 if CUDA:
     img_dims_list = img_dims_list.cuda()
 
 ## create batches
 leftover = 0
+# (n of images)/(size of each batch) = remainder?
 if (len(img_dims_list) % batch_size):
     leftover = 1
 
+# ensure even batches given n_images and bs
 if batch_size != 1:
     n_batches = len(img_list)//batch_size + leftover
     img_batches = [torch.cat((img_batches[i*batch_size:min((i+1)*batch_size, len(img_batches))])) for i in range(n_batches)]
 
+print("img_batches post")
+for img in img_batches:
+    print(img.shape)
 
 ## detection loop
 # 1. iterate over batches
