@@ -41,6 +41,9 @@ def filter_labels(raw_json):
     raw_df = pd.read_json(raw_json)
     data_labels = {}
     for idx, label in enumerate(raw_df["labels"]):
+        # skip nan labels
+        if type(label) == float:
+            continue
         objects = []
         obj = {}
 
