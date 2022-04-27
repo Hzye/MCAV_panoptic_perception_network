@@ -171,9 +171,9 @@ if batch_size != 1:
     n_batches = len(img_list)//batch_size + leftover
     img_batches = [torch.cat((img_batches[i*batch_size:min((i+1)*batch_size, len(img_batches))])) for i in range(n_batches)]
 
-print("img_batches post")
-for img in img_batches:
-    print(img.shape)
+# print("img_batches post")
+# for img in img_batches:
+#     print(img.shape)
 
 ## detection loop
 # 1. iterate over batches
@@ -192,9 +192,13 @@ for idx, batch in enumerate(img_batches):
     if CUDA:
         batch = batch.cuda()
     
+    # feed batch into the model and predict classes, bboxes
     with torch.no_grad():
         prediction = model(Variable(batch), CUDA)
-        
+    
+    torch.save(prediction, "pred.pt")
+
+    # separate results of the prediction
     prediction = write_results(
         prediction=prediction,
         confidence=confidence,
@@ -202,6 +206,8 @@ for idx, batch in enumerate(img_batches):
         nms_conf=nms_thresh
     )
     end = time.time()
+    
+    print(prediction)
 
     if type(prediction) == int:
         for img_num, image in enumerate(img_list[idx*batch_size:min((idx+1)*batch_size, len(img_list))]):

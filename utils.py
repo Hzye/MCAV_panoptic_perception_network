@@ -70,9 +70,11 @@ def predict_transform(prediction, in_dims, anchors, n_classes, CUDA=True):
 
 def unique(tensor):
     """
-    Returns classes present in any given image.
+    Returns tensor list of unique class indices detected.
     """
+    # convert to np array
     tensor_np = tensor.cpu().numpy()
+    #
     unique_np = np.unique(tensor_np)
     unique_tensor = torch.from_numpy(unique_np)
 
@@ -110,21 +112,33 @@ def bbox_iou(box1, box2):
 
 def write_results(prediction, confidence, n_classes, nms_conf=0.4):
     """
-    Objectness score thresholding and non-max suppression.
+    Filters raw predictions made from network forward pass based on object confidence thresholding and NMS.
 
-    Input:
-    =prediction= tensor of size (batch_size) x (n_bboxes) x (4 bbox attrs + 1 obj score + 80 class scores)
+    Inputs:
+    =prediction=    output prediction tensor from network, size (batch_size) x (n_bboxes) x (4 bbox attrs + 1 obj score + 80 class scores)
+    =confidence=    object confidence score threshold, default 0.5
+    =n_classes=     number of classes within dataset
+    =nms_conf=      non max suppression confidence threshold, default 0.4
+
+    Outputs:
+    =output=        returns number of tensors based on number of predicted objects
+                    []
     """
 
-    ## object confidence thresholding
+    ## [1] Filter predictions based on OBJECT CONFIDENCE THRESHOLD
 
     # prediction tensor contains info about Bx10647 bboxes
-    # for each bbox that has an objectness score below threshol:
-    # we set the value of its attr *entire row representing bbox) to zero
-    conf_mask = (prediction[:,:,4] > confidence).float().unsqueeze(2)
+
+    #   1. take the 4th index of all bbox attr rows - this contains objectness score (confidence that there is an object)
+    #   2. convert tensor of T and F -> 0s and 1s so we can multiply to entire predictions tensor
+    #   3. right now prediction.size(1, 22743, 85) but mask.size(1, 22743)
+    #       -> unsqueeze() in the 3rd dim (or index 2) such that mask.size(1, 22743, 1)
+    #   4. now shapes match so we can multiply to mask ENTIRE bbox attr rows which do not meet obj conf threshold
+
+    conf_mask = (prediction[:,:,4] > confidence).float().unsqueeze(2) 
     prediction = prediction*conf_mask
 
-    ## performing non-max suppression
+    ## [2] Filter predictions based on HIGHEST CLASS SCORE
 
     # bbox attrs described by centre coords
     # convert (centre_x, centre_y, height, width) -> (min_x, min_y, max_x, max_y)
@@ -143,32 +157,48 @@ def write_results(prediction, confidence, n_classes, nms_conf=0.4):
     write = False # indicates if we have initialised 'output' 
     # output collects filtered detections across entire batch
 
+    # loop through image predictions in batch
     for idx in range(batch_size):
-        image_pred = prediction[idx] # image tensor
+        image_pred = prediction[idx] # ith image tensor
 
         # each bbox row has 85 attrs, last 80 are class scores (%)
-        # so remove all class scores for each row except one with max value
-        # save indices + classes of max value classes
-        max_conf, max_conf_score = torch.max(image_pred[:,5:5+n_classes], 1)
-        max_conf = max_conf.float().unsqueeze(1)
-        max_conf_score = max_conf_score.float().unsqueeze(1)
-        seq = (image_pred[:,:5], max_conf, max_conf_score)
-        image_pred = torch.cat(seq, 1)
+        #   1. look at all n_classes class scores (aka remove 4 bbox attrs + obj score)
+        #       -> image_pred[:, 5:5+n_classes] (n_bboxes, n_classes)
+        #   2. find 'most likely class' by finding max class prob in FIRST DIM
+        #       -> save tensor of max score and index of score
+        #   3. unsqueeze to add appropriate dims ()
+        #       -> (n_bboxes) -> (n_bboxes, 1)      
+        
+        max_class_score, max_class_score_idx = torch.max(image_pred[:,5:5+n_classes], 1) # max_class_score, max_class_score_idx (n_bboxes)
+        max_class_score = max_class_score.float().unsqueeze(1) # max_class_score (n_bboxes, 1)
+        max_class_score_idx = max_class_score_idx.float().unsqueeze(1) # max_class_score_score (n_bboxes, 1)
 
-        # remove filtered object confidences
-        non_zero_ind = (torch.nonzero(image_pred[:,4]))
+        # concatenate bbox_attrs + max_class_score + max_class_score_idx
+        seq = (image_pred[:,:5], max_class_score, max_class_score_idx) 
+        image_pred = torch.cat(seq, 1) # size (n_bboxes, (4+1)+(1)+(1)) = (n_bboxes, 7)
+
+        # indices of all nonzero (valid) bbox rows
+        non_zero_idx = (torch.nonzero(image_pred[:,4]))
 
         # if there are no detection, skip rest of loop body for current image
         try:
-            image_pred_ = image_pred[non_zero_ind.squeeze(),:].view(-1,7)
+            image_pred_ = image_pred[non_zero_idx.squeeze(),:].view(-1,7)
         except:
             continue
 
         if image_pred_.shape[0] == 0:
             continue
 
-        # get classes detected in current image
-        img_classes = unique(image_pred_[:,-1]) # all except last element - holds class index
+        # we have now filtered bbox predictions down to those with obj confidence > 0.5, with info:
+        # [min_x, min_y, max_x, max_y, Pr(object), max_class_score, max_class_score_idx], size (1, 7)
+        # image_pred_ size (n_filtered_preds, 7)
+        
+        # obtain a tensor list of all classes.
+        img_classes = unique(image_pred_[:,-1])
+
+        # TODO: better way of filtering out multiple bboxes over same object
+        # using unique() filters out ALL BUT ONE bbox of each class
+        # therefore cant detect multiple of same object in one frame
 
         ## classwise non max suppression
         for classes in img_classes:
