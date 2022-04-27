@@ -93,12 +93,13 @@ def bbox_iou(box1, box2):
     # get coords of intersection
     intersect_x1 = torch.max(b1_x1, b2_x1)
     intersect_y1 = torch.max(b1_y1, b2_y1)
-    intersect_x2 = torch.max(b1_x2, b2_x2)
-    intersect_y2 = torch.max(b1_y2, b2_y2)
+    intersect_x2 = torch.min(b1_x2, b2_x2)
+    intersect_y2 = torch.min(b1_y2, b2_y2)
 
     # intersection area
     # clamp to > 0
-    intersect_area = torch.clamp(intersect_x2 - intersect_x1+1, min=0)*torch.clamp(intersect_y2 - intersect_y1+1, min=0)
+    # this avoids areas being calculated for boxes with zero intersect
+    intersect_area = torch.clamp(intersect_x2 - intersect_x1, min=0)*torch.clamp(intersect_y2 - intersect_y1, min=0)
 
     # union area
     b1_area = (b1_x2 - b1_x1)*(b1_y2 - b1_y1)
