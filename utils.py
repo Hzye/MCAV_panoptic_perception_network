@@ -115,14 +115,14 @@ def write_results(prediction, confidence, n_classes, nms_conf=0.4):
     Filters raw predictions made from network forward pass based on object confidence thresholding and NMS.
 
     Inputs:
-    =prediction=    output prediction tensor from network, size (batch_size) x (n_bboxes) x (4 bbox attrs + 1 obj score + 80 class scores)
+    =prediction=    output prediction tensor from network, size (batch_size, n_bboxes, 4 bbox attrs + 1 obj score + n_classes)
     =confidence=    object confidence score threshold, default 0.5
     =n_classes=     number of classes within dataset
     =nms_conf=      non max suppression confidence threshold, default 0.4
 
     Outputs:
-    =output=        returns number of tensors based on number of predicted objects
-                    []
+    =output=        returns number of tensors based on number of predicted objects (1, 8)
+                    [n_in_batch, min_x, min_y, max_x, max_y, max_class_score, max_class_score_idx]
     """
 
     ## [1] Filter predictions based on OBJECT CONFIDENCE THRESHOLD
@@ -195,10 +195,24 @@ def write_results(prediction, confidence, n_classes, nms_conf=0.4):
         
         # obtain a tensor list of all classes.
         img_classes = unique(image_pred_[:,-1])
+        
+        ###########################################################################################
 
         # TODO: better way of filtering out multiple bboxes over same object
         # using unique() filters out ALL BUT ONE bbox of each class
         # therefore cant detect multiple of same object in one frame
+
+        # iterate through bbox attrs with highest Pr(obj)
+        # calculateng IoU of all other bboxes in ref to the one with highest IoU will determine
+        #   with other bboxes are most likely overlapping with it (above thresh)
+        # perform NMS by REMOVING all bboxes that have IoU above thresh 
+        
+        # =psudocode=
+        
+        # arrange image_pred_ from high to low based on Pr(obj)
+        # loop through image_pred_:
+        #   check IoU with all other 
+        #   if > iou_thresh then delete   
 
         ## classwise non max suppression
         for classes in img_classes:
@@ -236,6 +250,8 @@ def write_results(prediction, confidence, n_classes, nms_conf=0.4):
                 # remove non-zero entries
                 non_zero_idx = torch.nonzero(image_pred_class[:,4]).squeeze()
                 image_pred_class = image_pred_class[non_zero_idx].view(-1,7)
+            
+            ###########################################################################################
 
             # output tensor (n_true_preds_in_all_images x 8)
             # 8 attrs are:
