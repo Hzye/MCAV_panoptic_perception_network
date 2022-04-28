@@ -200,8 +200,8 @@ def create_modules(blocks):
 class Net(nn.Module):
     def __init__(self, cfgfile):
         super(Net, self).__init__()
-        self.blocks = parse_cfg(cfgfile)
-        self.net_info, self.module_list = create_modules(self.blocks)
+        self.blocks = parse_cfg(cfgfile) # has iterable parameters of all modules
+        self.net_info, self.module_list = create_modules(self.blocks) # has the ACTUAL modules
 
     ## Forward pass
     # 1. calculate output
@@ -283,9 +283,9 @@ class Net(nn.Module):
                 # transform
                 x = x.data
                 x = predict_transform(
-                    prediction=x, 
-                    in_dims=in_dims, 
-                    anchors=anchors, 
+                    prediction=x, # size (n_batches, n_conv_filters_from_prev_layer, filter_w, filter_h)
+                    in_dims=in_dims, # model height
+                    anchors=anchors, # [(a1_w, a1_h), (a2_w, a2_h), (a3_w, a3_h)]
                     n_classes=n_classes,
                     CUDA=CUDA
                 )
