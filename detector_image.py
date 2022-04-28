@@ -207,7 +207,7 @@ for idx, batch in enumerate(img_batches):
     )
     end = time.time()
     
-    print(prediction)
+    #print(prediction)
 
     if type(prediction) == int:
         for img_num, image in enumerate(img_list[idx*batch_size:min((idx+1)*batch_size, len(img_list))]):
