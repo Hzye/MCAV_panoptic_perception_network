@@ -213,68 +213,60 @@ def write_results(prediction, confidence, n_classes, nms_conf=0.4):
         # arrange image_pred_ from high to low based on Pr(obj)
         # loop through image_pred_:
         #   check IoU with all other 
-        #   if > iou_thresh then delete   
+        #   if > iou_thresh then delete
+        
+        conf_sort_idx = torch.sort(image_pred_[:,4], descending=True)[1]
+        image_pred_ordered = image_pred_[conf_sort_idx]
 
-        ## classwise non max suppression
-        for classes in img_classes:
-            # extract detections of particular class (classes)
-            class_mask = image_pred_*(image_pred_[:,-1] == classes).float().unsqueeze(1)
-            class_mask_idx = torch.nonzero(class_mask[:,-2]).squeeze() # all except last 2 elements
-            image_pred_class = image_pred_[class_mask_idx].view(-1,7) # (best fit) x 7
+        n_detections = image_pred_ordered.size(0)
 
-            # sort such that first element has max objectness confidence
-            conf_sort_idx = torch.sort(image_pred_class[:,4], descending=True)[1]
-            image_pred_class = image_pred_class[conf_sort_idx]
+        ## non max suppression
+        for det in range(n_detections):
+            # get IOUs of all boxes that come after the one we are looking at in loop
+            # use try except because bboxes may be removed from image_pred_class
+            try:
+                # ious indexed by det with all bboxes having indices > det
+                ious = bbox_iou(image_pred_ordered[det].unsqueeze(0), image_pred_ordered[det+1:])
+            except ValueError:
+                break
+
+            except IndexError:
+                break
             
-            n_detections = image_pred_class.size(0)
+            # ever iteration, if any bboxes that have indices > det also have iou 
+            # (with box indexed by det) larger than threshold nms_thresh, eliminate it
 
-            ## non max suppression
-            for det in range(n_detections):
-                # get IOUs of all boxes that come after the one we are looking at in loop
-                # use try except because bboxes may be removed from image_pred_class
-                try:
-                    # ious indexed by det with all bboxes having indices > det
-                    ious = bbox_iou(image_pred_class[det].unsqueeze(0), image_pred_class[det+1:])
-                except ValueError:
-                    break
+            # zero out all detections that have iou > threshold
+            iou_mask = (ious < nms_conf).float().unsqueeze(1)
+            image_pred_ordered[det+1:] *= iou_mask
 
-                except IndexError:
-                    break
-                
-                # ever iteration, if any bboxes that have indices > det also have iou 
-                # (with box indexed by det) larger than threshold nms_thresh, eliminate it
-
-                # zero out all detections that have iou > threshold
-                iou_mask = (ious < nms_conf).float().unsqueeze(1)
-                image_pred_class[det+1:] *= iou_mask
-
-                # remove non-zero entries
-                non_zero_idx = torch.nonzero(image_pred_class[:,4]).squeeze()
-                image_pred_class = image_pred_class[non_zero_idx].view(-1,7)
-            
+            # remove non-zero entries
+            non_zero_idx = torch.nonzero(image_pred_ordered[:,4]).squeeze()
+            image_pred_ordered = image_pred_ordered[non_zero_idx].view(-1,7)
+        
             ###########################################################################################
 
-            # output tensor (n_true_preds_in_all_images x 8)
-            # 8 attrs are:
-            #   - idx of image in batch to which detection belongs to
-            #   - 4 corner coords
-            #   - objectness score
-            #   - score of class with max confidence
-            #   - idx of class with max confidence
+        # output tensor (n_true_preds_in_all_images x 8)
+        # 8 attrs are:
+        #   - idx of image in batch to which detection belongs to
+        #   - 4 corner coords
+        #   - objectness score
+        #   - score of class with max confidence
+        #   - idx of class with max confidence
 
-            # do not init output tensor unless we have a detection to assign to
-            # check write flag
-            batch_idx = image_pred_class.new(image_pred_class.size(0), 1).fill_(idx)
-            
-            # repeat batch_id for as many detections of class det in image
-            seq = batch_idx, image_pred_class
+        # do not init output tensor unless we have a detection to assign to
+        # check write flag
+        batch_idx = image_pred_ordered.new(image_pred_ordered.size(0), 1).fill_(idx)
+        
+        # repeat batch_id for as many detections of class det in image
+        seq = batch_idx, image_pred_ordered
 
-            if not write:
-                output = torch.cat(seq,1)
-                write = True
-            else:
-                pre_output = torch.cat(seq,1)
-                output = torch.cat((output, pre_output))
+        if not write:
+            output = torch.cat(seq,1)
+            write = True
+        else:
+            pre_output = torch.cat(seq,1)
+            output = torch.cat((output, pre_output))
 
     # check whether otuput has been init at all
     # if no then there hasnt been a detection in any images in the batch  
