@@ -10,16 +10,28 @@ import cv2
 def predict_transform(prediction, in_dims, anchors, n_classes, CUDA=True):
     """
     Converts detection feature map into 2D tensor, where each row are attributes of bbox.
+
+    Inputs:
+    =prediction=    output from previous conv layer. size (n_batches, n_conv_filters, grid_w, grid_h)
+    =in_dims=       model height
+    =anchors=       widths, heights of anchor boxes. size (n_anchors, 2) -> [(a1_w, a1_h), (a2_w, a2_h), (a3_w, a3_h)]
+    =n_classes=     number of object classes in image dataset
+
+    Output:
+    =prediction=    output from yolo detection layer. size (n_batches, n_bboxes, 4+1+n_classes)
     """
-    batch_size = prediction.size(0)
-    stride = in_dims // prediction.size(2)
+    # print(prediction.shape)
+    # print(prediction[0])
+    torch.save(prediction, "yolo_layer_input.pt")
+    batch_size = prediction.shape[0]
+    stride = in_dims // prediction.shape[2]
     grid_size = prediction.shape[2]
     bbox_attrs = 5 + n_classes
     n_anchors = len(anchors)
 
     # reshaping
-    prediction = prediction.view(batch_size, bbox_attrs*n_anchors, grid_size*grid_size)
-    prediction = prediction.transpose(1,2).contiguous()
+    prediction = prediction.view(batch_size, bbox_attrs*n_anchors, grid_size*grid_size) # size (n_batches, n_conv_filters, (grid_w*grid_h))
+    prediction = prediction.transpose(1,2).contiguous() # size (n_batches, (grid_w*grid_h), n_conv_filters)
     prediction = prediction.view(batch_size, grid_size*grid_size*n_anchors, bbox_attrs)
 
     # divide anchors by stride of detection feature map as input image is 
