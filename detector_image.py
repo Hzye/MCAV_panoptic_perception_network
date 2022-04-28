@@ -196,7 +196,7 @@ for idx, batch in enumerate(img_batches):
     with torch.no_grad():
         prediction = model(Variable(batch), CUDA)
     
-    torch.save(prediction, "pred.pt")
+    #torch.save(prediction, "{}.pt".format(idx))
 
     # separate results of the prediction
     prediction = write_results(
