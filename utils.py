@@ -227,17 +227,6 @@ def write_results(prediction, confidence, n_classes, nms_conf=0.4):
         img_classes = unique(image_pred_[:,-1])
         
         ###########################################################################################
-
-        # TODO: better way of filtering out multiple bboxes over same object
-        # using unique() filters out ALL BUT ONE bbox of each class
-        # therefore cant detect multiple of same object in one frame
-
-        # iterate through bbox attrs with highest Pr(obj)
-        # calculateng IoU of all other bboxes in ref to the one with highest IoU will determine
-        #   with other bboxes are most likely overlapping with it (above thresh)
-        # perform NMS by REMOVING all bboxes that have IoU above thresh 
-        
-        # =psudocode=
         
         # arrange image_pred_ from high to low based on Pr(obj)
         # loop through image_pred_:
