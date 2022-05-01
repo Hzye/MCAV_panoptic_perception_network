@@ -298,10 +298,13 @@ class Net(nn.Module):
                 else:
                     detections = torch.cat((detections, x), 1)
 
-                ###########################################################################
-                # expected output from yolo/detection layer:
-                # cat[ --det1(13x13 grid)-- , --det2(26x26 grid)-- , --det3(52x52 grid)--]
-                ###########################################################################
+                ######################################################################################
+                # EXPECTED OUTPUT FROM YOLO/DETECTION LAYER:
+                #
+                # cat[ --det1(for 13x13 grid)-- , --det2(for 26x26 grid)-- , --det3(for 52x52 grid)--]
+                #
+                # This encapsulates EVERY SINGLE DETECTION for a single image in ALL 3 GRIDSIZES
+                ######################################################################################
 
             # save current output
             outputs[idx] = x

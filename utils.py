@@ -12,14 +12,22 @@ def predict_transform(prediction, in_dims, anchors, n_classes, CUDA=True):
     Converts detection feature map from convolution layer into 2D tensor, where each row are attributes of bbox.
 
     Inputs:
-    =prediction=    output from previous conv layer. size (n_batches, n_conv_filters, grid_w, grid_h)
+    =prediction=    output from previous conv layer. size (n_batches, n_conv_filters, grid_size, grid_size)
+                        -> we expect 3 different predictions to come in for EACH IMAGE, with grid_sizes:
+                            - [n_batches, n_conv_filters, 13, 13]
+                            - [n_batches, n_conv_filters, 26, 26]
+                            - [n_batches, n_conv_filters, 52, 52]
     =in_dims=       model height
     =anchors=       widths, heights of anchor boxes. size (n_anchors, 2) -> [(a1_w, a1_h), (a2_w, a2_h), (a3_w, a3_h)]
     =n_classes=     number of object classes in image dataset
 
     Output:
-    =prediction=    output from yolo detection layer. size (n_batches, n_bboxes, 4+1+n_classes)
-    """
+    =prediction=    output from yolo detection layer. size (n_batches, (grid_size*grid_size*n_anchors), (4+1+n_classes))
+                        -> we expect 3 different predictions to output for EACH IMAGE, with grid_sizes:
+                            - [n_batches, (13*13*n_anchors), (4+1+n_classes)]
+                            - [n_batches, (26*26*n_anchors), (4+1+n_classes)]
+                            - [n_batches, (52*52*n_anchors), (4+1+n_classes)]
+"""
     # print(prediction.shape)
     # print(prediction[0])
     #torch.save(prediction, "yolo_layer_input.pt")
