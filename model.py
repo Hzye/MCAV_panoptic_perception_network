@@ -214,7 +214,7 @@ class Net(nn.Module):
 
         # iterate over module_list, pass input through each module
         # in -> [module[0]] -> [module[1]] -> ...
-        write = 0 # used as flag to inidicate if we've encountered first detection yet for yolo 
+        write = 0 # used as flag to inidicate if we've encountered first DETECTION LAYER yet (there are 3) 
         for idx, module in enumerate(modules):
             module_type = (module["type"])
             #print(module_type)
@@ -280,7 +280,7 @@ class Net(nn.Module):
                 in_dims = int(self.net_info["height"])
                 n_classes = int(module["classes"])
 
-                # transform
+                # transform and output as detection tensor
                 x = x.data
                 x = predict_transform(
                     prediction=x, # size (n_batches, n_conv_filters_from_prev_layer, filter_w, filter_h)
@@ -289,12 +289,20 @@ class Net(nn.Module):
                     n_classes=n_classes,
                     CUDA=CUDA
                 )
-                # recall write=0 means collector hasnt been initatlised
+                
+                # if this is the FIRST YOLO DETECTION LAYER, then initiate collector
                 if not write:
                     detections = x
                     write = 1
+                # if this is the 2nd or 3rd detection, then simply concat to collector
                 else:
                     detections = torch.cat((detections, x), 1)
+
+                ###########################################################################
+                # expected output from yolo/detection layer:
+                # cat[ --det1(13x13 grid)-- , --det2(26x26 grid)-- , --det3(52x52 grid)--]
+                ###########################################################################
+
             # save current output
             outputs[idx] = x
         return detections
