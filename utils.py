@@ -295,7 +295,7 @@ def write_results(prediction, confidence, n_classes, nms_conf=0.4):
 
 def load_classes(namesfile):
     fp = open(namesfile, "r")
-    names = fp.read().split("\n")[:-1]
+    names = fp.read().split("\n")
     return names
 
 def norm_with_padding(img, in_dims):
