@@ -83,12 +83,20 @@ def centre_dims_to_corners(bbox):
     """
     Converts bbox attributes of form [x_centre, y_centre, width, height] to form [x1, y1, x2, y2]. 
     
+    Use on an array of bboxes: [[bbox_1], [bbox_2], ... [bbox_n]].
+
     This form is used for easily calculating 2 bbox's IoU.
     """
     x_c, y_c, w, h = bbox[:,0], bbox[:,1], bbox[:,2], bbox[:,3]
     x1, x2 = x_c-(w/2), x_c+(w/2)
     y1, y2 = y_c-(h/2), y_c+(h/2)
-    new_bbox = np.array([x1, y1, x2, y2])
+    
+    x1 = np.expand_dims(x1, 1)
+    x2 = np.expand_dims(x2, 1)
+    y1 = np.expand_dims(y1, 1)
+    y2 = np.expand_dims(y2, 1)
+
+    new_bbox = np.concatenate((x1, y1, x2, y2), axis=1)
     return new_bbox
 
 def bbox_anchorbox_iou(bbox, anchor_boxes):
