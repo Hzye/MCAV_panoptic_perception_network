@@ -85,11 +85,42 @@ def centre_dims_to_corners(bbox):
     
     This form is used for easily calculating 2 bbox's IoU.
     """
-    x_c, y_c, w, h = bbox
+    x_c, y_c, w, h = bbox[:,0], bbox[:,1], bbox[:,2], bbox[:,3]
     x1, x2 = x_c-(w/2), x_c+(w/2)
     y1, y2 = y_c-(h/2), y_c+(h/2)
     new_bbox = np.array([x1, y1, x2, y2])
     return new_bbox
+
+def bbox_anchorbox_iou(bbox, anchor_boxes):
+    """
+    Returns intersection over union of two bounding boxes.
+
+    Performed on np arrays.
+    """
+    # get coords of bboxes
+    b1_x1, b1_y1, b1_x2, b1_y2 = bbox[0], bbox[1], bbox[2], bbox[3]
+    b2_x1, b2_y1, b2_x2, b2_y2 = anchor_boxes[:,0], anchor_boxes[:,1], anchor_boxes[:,2], anchor_boxes[:,3]
+
+    # get coords of intersection
+    intersect_x1 = np.max(b1_x1, b2_x1)
+    intersect_y1 = np.max(b1_y1, b2_y1)
+    intersect_x2 = np.min(b1_x2, b2_x2)
+    intersect_y2 = np.min(b1_y2, b2_y2)
+
+    # intersection area
+    # clamp to > 0
+    # this avoids areas being calculated for boxes with zero intersect
+    intersect_area = np.clip(intersect_x2 - intersect_x1, a_min=0)*np.clip(intersect_y2 - intersect_y1, a_min=0)
+
+    # union area
+    b1_area = (b1_x2 - b1_x1)*(b1_y2 - b1_y1)
+    b2_area = (b2_x2 - b2_x1)*(b2_y2 - b2_y1)
+    union_area = b1_area + b2_area - intersect_area
+
+    # compute iou
+    iou = intersect_area/union_area
+
+    return iou    
 
 def draw_bbox(image, categories, bboxes):
     """
