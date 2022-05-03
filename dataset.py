@@ -66,7 +66,30 @@ def load_classes(namesfile):
     names = fp.read().split("\n")
     return names
 
+def corners_to_centre_dims(bbox):
+    """
+    Converts bbox attributes of form [x1, y1, x2, y2] to form [x_centre, y_centre, width, height].
 
+    This form is used for training and feeding into network.
+    """
+    width = bbox[2]-bbox[0]
+    height = bbox[3]-bbox[1]
+    x_centre = bbox[0]+(width/2)
+    y_centre = bbox[1]+(height/2)
+    new_bbox = np.array([x_centre, y_centre, width, height])
+    return new_bbox
+
+def centre_dims_to_corners(bbox):
+    """
+    Converts bbox attributes of form [x_centre, y_centre, width, height] to form [x1, y1, x2, y2]. 
+    
+    This form is used for easily calculating 2 bbox's IoU.
+    """
+    x_c, y_c, w, h = bbox
+    x1, x2 = x_c-(w/2), x_c+(w/2)
+    y1, y2 = y_c-(h/2), y_c+(h/2)
+    new_bbox = np.array([x1, y1, x2, y2])
+    return new_bbox
 
 def draw_bbox(image, categories, bboxes):
     """
