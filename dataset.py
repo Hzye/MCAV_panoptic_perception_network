@@ -104,21 +104,32 @@ def bbox_anchorbox_iou(bbox, anchor_boxes):
     Returns intersection over union of two bounding boxes.
 
     Performed on np arrays.
+
+    Inputs:
+
+    Outputs:
+    =iou=   array with iou between bbox and chosen anchor boxes.
     """
     # get coords of bboxes
     b1_x1, b1_y1, b1_x2, b1_y2 = bbox[0], bbox[1], bbox[2], bbox[3]
     b2_x1, b2_y1, b2_x2, b2_y2 = anchor_boxes[:,0], anchor_boxes[:,1], anchor_boxes[:,2], anchor_boxes[:,3]
 
+    # reshape so that we can vectorise operations
+    x1_comparisons = np.concatenate((np.expand_dims(b1_x1.repeat(3),1), np.expand_dims(b2_x1, 1)), axis=1)
+    x2_comparisons = np.concatenate((np.expand_dims(b1_x2.repeat(3),1), np.expand_dims(b2_x2, 1)), axis=1)
+    y1_comparisons = np.concatenate((np.expand_dims(b1_y1.repeat(3),1), np.expand_dims(b2_y1, 1)), axis=1)
+    y2_comparisons = np.concatenate((np.expand_dims(b1_y2.repeat(3),1), np.expand_dims(b2_y2, 1)), axis=1)
+
     # get coords of intersection
-    intersect_x1 = np.max(b1_x1, b2_x1)
-    intersect_y1 = np.max(b1_y1, b2_y1)
-    intersect_x2 = np.min(b1_x2, b2_x2)
-    intersect_y2 = np.min(b1_y2, b2_y2)
+    intersect_x1 = np.max(x1_comparisons, axis=1)
+    intersect_x2 = np.min(x2_comparisons, axis=1)
+    intersect_y1 = np.max(y1_comparisons, axis=1)
+    intersect_y2 = np.min(y2_comparisons, axis=1)
 
     # intersection area
     # clamp to > 0
     # this avoids areas being calculated for boxes with zero intersect
-    intersect_area = np.clip(intersect_x2 - intersect_x1, a_min=0)*np.clip(intersect_y2 - intersect_y1, a_min=0)
+    intersect_area = np.clip(intersect_x2 - intersect_x1, a_min=0, a_max=1e10)*np.clip(intersect_y2 - intersect_y1, a_min=0, a_max=1e10)
 
     # union area
     b1_area = (b1_x2 - b1_x1)*(b1_y2 - b1_y1)
