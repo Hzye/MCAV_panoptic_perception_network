@@ -59,8 +59,14 @@ def filter_labels(raw_json):
     return data_labels
 
 def load_classes(namesfile):
+    """
+    Loads file containing the unique classes of objects within the BDD100k dataset.
+    """
     fp = open(namesfile, "r")
-    names = fp.read().split("\n")[:-1]
+    names = fp.read().split("\n")
+    return names
+
+
 
 def draw_bbox(image, categories, bboxes):
     """
@@ -103,7 +109,7 @@ class DetectionDataset(Dataset):
         """
         self.labels = label_dict
         self.root_dir = root_dir
-        self.classes = load_classes(classes_file)
+        self.classes = np.array(load_classes(classes_file)) # loads a array of strings
         self.transform = transform
     
     def __len__(self):
@@ -123,6 +129,7 @@ class DetectionDataset(Dataset):
             curr_im_cat_labels = [obj["category"] for obj in list(self.labels.values())[image_idx]]
             category_labels.append(curr_im_cat_labels)
         categories = category_labels[idx]
+        #categories = np.array(categories)
         
         ## collect all bounding box coords per image
         # first create list of list of dictionaries exclusively full of bbox coordinates
@@ -146,7 +153,7 @@ class DetectionDataset(Dataset):
             # add the current image list to full list of images
             bbox_labels.append(cur_image)
         bboxes = bbox_labels[idx]
-        bboxes = np.array(bboxes)
+        bboxes = np.array(bboxes) # size (n_bboxes, 4) -> [x1, y1, x2, y2]
 
         ## form labels to compare with output of forward pass
         # loop through each grid size
@@ -174,34 +181,33 @@ class DetectionDataset(Dataset):
             # loop through each obj in image
             for i, bbox in enumerate(bboxes):
                 # reorganise bbox attrs from [x1, y1, x2, y2] to [x_c, y_c, w, h]
-                width = bbox[2]-bbox[0]
-                height = bbox[3]-bbox[1]
-                x_centre = bbox[0]+(width/2)
-                y_centre = bbox[1]+(height/2)
-                new_bbox = np.array([x_centre, y_centre, width, height])
+                new_bbox = corners_to_centre_dims(bbox)
 
                 # convert grid to pairs of grid centre coords
                 grid_coords = np.concatenate((b.reshape(-1,1), a.reshape(-1,1)), axis=1)
-                dists = np.sum(np.square(grid_coords-new_bbox[:2]), axis=1).reshape(13,13)
+                dists = np.sum(np.square(grid_coords-new_bbox[:2]), axis=1).reshape(grid_size,grid_size)
 
                 # find coord of grid cell that bbox centre belong to
                 w_idx, h_idx = np.unravel_index(dists.argmin(), dists.shape)
 
                 # make class type label
-                class_array = (self.classes == categories[i]).astype(int)
+                class_array = (self.classes == categories[i]).astype(int) # not working 
+                #print(class_array)
 
                 obj_cell_label = np.concatenate((new_bbox, np.array([1]), class_array))
 
                 # fill in object label
                 labels[w_idx][h_idx] = obj_cell_label
             
+            labels = labels.reshape(-1,5+n_classes)
+            print(labels.shape)
             if not write:
                 all_labels = labels
                 write = 1
             else:
                 all_labels = np.concatenate((all_labels, labels), 1)
 
-        sample = {"image": image, "labels": all_labels}
+        sample = {"image": image, "bbox": bboxes, "category": categories, "labels": all_labels}
 
         if self.transform:
             sample = self.transform(sample)
