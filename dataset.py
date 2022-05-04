@@ -170,19 +170,26 @@ def draw_bbox(image, categories, bboxes):
 
 class DetectionDataset(Dataset):
     """
-    Object detection dataset with bounding box and category data.
+    Object detection dataset with bounding box, objectness score and class data.
     
     """
-    def __init__(self, label_dict, root_dir, classes_file, transform=None):
+    def __init__(self, label_dict, root_dir, classes_file, grid_sizes, anchors, transform=None):
         """
         Args:
-        =label_dict=    dictionary with key (image name) and value (object categories and bboxes).
+        =label_dict=    file location of bdd100k detection labels (.json).
         =root_dir=      directory with all images.
+        =classes_file=  file location of unique classes within bdd100k (.names).
+        =grid_sizes=    list of different grid sizes that detection will be performed on per image. 
+                            Expected size: (1, grid_sizes)
+        =anchors=       np array of anchors to be used per grid size. 
+                            Expected size: (n_grid_sizes, n_anchors, 2) - 2 being size of (anchor_w, anchor_h)
         =transform=     optional transform to be applied on a sample.
         """
-        self.labels = label_dict
+        self.labels = filter_labels(label_dict)
         self.root_dir = root_dir
         self.classes = np.array(load_classes(classes_file)) # loads a array of strings
+        self.grid_sizes = np.array(grid_sizes)
+        self.anchors = anchors
         self.transform = transform
     
     def __len__(self):
@@ -230,19 +237,16 @@ class DetectionDataset(Dataset):
 
         ## form labels to compare with output of forward pass
         # loop through each grid size
-        grid_sizes = [13, 26, 52]
-        n_classes = 12
-        anchors = np.array([
-            [[116,90], [156,198], [373,326]],
-            [[30, 61], [62, 45], [59,119]],
-            [[10, 13], [16, 30], [33, 23]],
-        ])
+        grid_sizes = self.grid_sizes
+        n_classes = self.classes.shape[0]
+        anchors = self.anchors
         n_anchors = anchors.shape[1]
 
         img_w, img_h = image.shape[0], image.shape[1]
 
         write = 0 # flag for knowing which grid cell size we are up to
-
+        
+        ## Loop through and create labels for each grid within grid_sizes
         for g, grid_size in enumerate(grid_sizes):
             # create meshgrid to fit bbox centres
             grid = np.arange(1, grid_size+1)
@@ -258,7 +262,7 @@ class DetectionDataset(Dataset):
             a = a - stride_x/2
             b = b - stride_y/2
 
-            # loop through each obj in image
+            # loop through each labelled obj in image
             for i, bbox in enumerate(bboxes):
                 # reorganise bbox attrs from [x1, y1, x2, y2] to [x_c, y_c, w, h]
                 new_bbox = corners_to_centre_dims(bbox)
@@ -308,7 +312,7 @@ class DetectionDataset(Dataset):
             else:
                 all_labels = np.concatenate((all_labels, labels), axis=0)
 
-        sample = {"image": image, "bbox": bboxes, "category": categories, "labels": all_labels}
+        sample = {"image": image, "labels": all_labels} # can also return "bbox": bboxes, "category": categories,
 
         if self.transform:
             sample = self.transform(sample)
