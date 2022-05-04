@@ -232,18 +232,25 @@ class DetectionDataset(Dataset):
         # loop through each grid size
         grid_sizes = [13, 26, 52]
         n_classes = 12
+        anchors = np.array([
+            [[116,90], [156,198], [373,326]],
+            [[30, 61], [62, 45], [59,119]],
+            [[10, 13], [16, 30], [33, 23]],
+        ])
+        n_anchors = anchors.shape[1]
+
         img_w, img_h = image.shape[0], image.shape[1]
 
         write = 0 # flag for knowing which grid cell size we are up to
 
-        for grid_size in grid_sizes:
+        for g, grid_size in enumerate(grid_sizes):
             # create meshgrid to fit bbox centres
             grid = np.arange(1, grid_size+1)
             a,b = np.meshgrid(grid,grid)
             stride_x, stride_y = (img_w//grid_size), (img_h//grid_size)
 
             # initiate empty grid cells
-            labels = np.zeros(shape=(grid_size, grid_size, 5+n_classes))
+            labels = np.zeros(shape=(grid_size, grid_size, n_anchors, 5+n_classes))
 
             # calculate grid cell centres
             a *= stride_x 
@@ -267,18 +274,39 @@ class DetectionDataset(Dataset):
                 class_array = (self.classes == categories[i]).astype(int) # not working 
                 #print(class_array)
 
+                # complete grid cell label for detected object!
                 obj_cell_label = np.concatenate((new_bbox, np.array([1]), class_array))
 
+                ## now find which of the 3 anchor boxes in corresponding grid size best describes bbox label 
+                
+                # repeat bbox label's centre coords and then append these to the 3 anchor box widths, heights
+                bbox_tile = np.tile(new_bbox[:2], [3,1])
+                anchor_boxes = np.concatenate((bbox_tile, anchors[g]), 1) # reference the g'th set of anchor dims corresponding to gth grid_size
+
+                # convert these abox attrs from [x_c, y_c, w, h] -> [x1, y1, x2, y2]
+                anchor_boxes = centre_dims_to_corners(anchor_boxes)
+
+                # calculate IoUs between current bbox and the set of aboxes
+                # then find idx of abox that best describes the current bbox (has highest IoU)
+                anchorbox_ious = bbox_anchorbox_iou(bbox, anchor_boxes)
+                anchorbox_idx = np.argmax(anchorbox_ious)
+
                 # fill in object label
-                labels[w_idx][h_idx] = obj_cell_label
-            
+                # recall labels size (grid_size, grid_size, n_anchors, 5+n_classes)
+                labels[w_idx][h_idx][anchorbox_idx] = obj_cell_label
+
+            # reshape to size (grid_size*grid_size*n_anchors, 5+n_classes)
+            # therefore, each label with an obj is now store at idx:
+            #   (w_idx*grid_size + h_idx)*n_anchors + anchorbox_idx
             labels = labels.reshape(-1,5+n_classes)
-            print(labels.shape)
+            #print(labels.shape)
+
+            # now create the full label with all grid sizes
             if not write:
                 all_labels = labels
                 write = 1
             else:
-                all_labels = np.concatenate((all_labels, labels), 1)
+                all_labels = np.concatenate((all_labels, labels), axis=0)
 
         sample = {"image": image, "bbox": bboxes, "category": categories, "labels": all_labels}
 
