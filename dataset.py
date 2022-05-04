@@ -87,16 +87,23 @@ def centre_dims_to_corners(bbox):
 
     This form is used for easily calculating 2 bbox's IoU.
     """
-    x_c, y_c, w, h = bbox[:,0], bbox[:,1], bbox[:,2], bbox[:,3]
+    if len(bbox.shape) > 1:
+        x_c, y_c, w, h = bbox[:,0], bbox[:,1], bbox[:,2], bbox[:,3]
+    else:
+        x_c, y_c, w, h = bbox[0], bbox[1], bbox[2], bbox[3]
     x1, x2 = x_c-(w/2), x_c+(w/2)
     y1, y2 = y_c-(h/2), y_c+(h/2)
     
-    x1 = np.expand_dims(x1, 1)
-    x2 = np.expand_dims(x2, 1)
-    y1 = np.expand_dims(y1, 1)
-    y2 = np.expand_dims(y2, 1)
+    if len(bbox.shape) > 1:
+        x1 = np.expand_dims(x1, 1)
+        x2 = np.expand_dims(x2, 1)
+        y1 = np.expand_dims(y1, 1)
+        y2 = np.expand_dims(y2, 1)
 
-    new_bbox = np.concatenate((x1, y1, x2, y2), axis=1)
+        new_bbox = np.concatenate((x1, y1, x2, y2), axis=1)
+    else:
+        new_bbox = np.array([x1, y1, x2, y2])
+
     return new_bbox
 
 def bbox_anchorbox_iou(bbox, anchor_boxes):
@@ -141,7 +148,7 @@ def bbox_anchorbox_iou(bbox, anchor_boxes):
 
     return iou    
 
-def draw_bbox(image, categories, bboxes):
+def draw_bbox(image, bboxes):
     """
     Draw all bounding boxes over image.
     
@@ -153,7 +160,7 @@ def draw_bbox(image, categories, bboxes):
     =plt.plot=  image from dataset with bounding boxes drawn over it.
     """
     # display current image
-    print(image.shape)
+    #print(image.shape)
     plt.imshow(image)
 
     for obj in bboxes:
