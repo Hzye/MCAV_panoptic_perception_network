@@ -153,6 +153,7 @@ img_dims_list = torch.FloatTensor(img_dims_list).repeat(1,2)
 # print("img_batches")
 # for img in img_batches:
 #     print(img.shape)
+# print("in_dims: {}".format(in_dims))
 # print("img_dims_list")
 # for img in img_dims_list:
 #     print(img)

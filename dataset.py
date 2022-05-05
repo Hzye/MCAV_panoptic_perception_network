@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from skimage import io, transform
+import cv2
 
 def filter_labels(raw_json):
     """
@@ -341,7 +342,7 @@ class Pad(object):
         self.output_size = output_size
 
     def __call__(self, sample):
-        image, categories, bboxes = sample["image"], sample["categories"], sample["bboxes"]
+        image, labels = sample["image"], sample["labels"]
 
         img_w, img_h = image.shape[1], image.shape[0]
         w, h = self.output_size
@@ -355,7 +356,7 @@ class Pad(object):
 
         canvas[(h-new_h)//2:(h-new_h)//2 + new_h,(w-new_w)//2:(w-new_w)//2 + new_w,  :] = resized_image
 
-        return {"image": canvas, "categories": categories, "bboxes": bboxes}
+        return {"image": canvas, "labels": labels}
     
 class Rescale(object):
     """
