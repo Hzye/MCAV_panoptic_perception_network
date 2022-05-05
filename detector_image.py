@@ -194,6 +194,7 @@ for idx, batch in enumerate(img_batches):
     
     # feed batch into the model and predict classes, bboxes
     with torch.no_grad():
+        torch.save(batch, "ex_tensors/model_input_{}".format(idx))
         prediction = model(Variable(batch), CUDA)
     
     #torch.save(prediction, "{}.pt".format(idx))
