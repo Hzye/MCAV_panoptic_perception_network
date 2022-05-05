@@ -327,6 +327,36 @@ class DetectionDataset(Dataset):
         return sample
 
 ## transforms
+class Pad(object):
+    """
+    Add padding to image
+
+    Args:
+        output_size (tuple or int): Desired output size. If tuple, output is
+            matched to output_size. If int, smaller of image edges is matched
+            to output_size keeping aspect ratio the same.
+    """
+    def __init__(self, output_size):
+        assert isinstance(output_size, (int, tuple)) # make sure output size is EITHER int or tuple
+        self.output_size = output_size
+
+    def __call__(self, sample):
+        image, categories, bboxes = sample["image"], sample["categories"], sample["bboxes"]
+
+        img_w, img_h = image.shape[1], image.shape[0]
+        w, h = self.output_size
+
+        # calculate new width and height
+        new_w = int(img_w * min(w/img_w, h/img_h))
+        new_h = int(img_h * min(w/img_w, h/img_h))
+        resized_image = cv2.resize(image, (new_w,new_h), interpolation = cv2.INTER_CUBIC)
+        
+        canvas = np.full((self.output_size[1], self.output_size[0], 3), 128)
+
+        canvas[(h-new_h)//2:(h-new_h)//2 + new_h,(w-new_w)//2:(w-new_w)//2 + new_w,  :] = resized_image
+
+        return {"image": canvas, "categories": categories, "bboxes": bboxes}
+    
 class Rescale(object):
     """
     Rescale the image in a sample to a given size.
