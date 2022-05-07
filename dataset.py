@@ -412,11 +412,14 @@ class Pad(object):
 
         ## resize bbox labels
 
-        # first filter out 
         # h and w are swapped for labels because for images,
         # x and y axes are axis 1 and 0 respectively
         # broadcast (n_bboxes, 4) * (1, 4)
         labels[:, :4] = labels[:, :4] * [new_w/w, new_h/h, new_w/w, new_h/h]
+
+        # add the height padding offset but only add to labels with actual detections
+        # filter out all non detection labels or else it will mess up the entire label array
+        # i.e. non detection labels wont be full vector of 0s anymore
         labels[:, 1] = labels[:, 1] + ((self.output_size-new_h)//2)*(~np.all(labels==0, axis=1))
 
         return {"image": canvas, "labels": labels}
