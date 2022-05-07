@@ -164,15 +164,22 @@ def draw_bbox(image, bboxes):
     #print(image.shape)
     plt.imshow(image)
 
-    for obj in bboxes:
-        # label coords appropriately
-        x_min, y_min, x_max, y_max = obj
-        # arrange coords in order such that we can draw the box in full
+    if len(bboxes.shape)>1:
+        for obj in bboxes:
+            # label coords appropriately
+            x_min, y_min, x_max, y_max = obj
+            # arrange coords in order such that we can draw the box in full
+            x_points = [x_min, x_min, x_max, x_max, x_min]
+            y_points = [y_min, y_max, y_max, y_min, y_min]
+
+            plt.plot(x_points, y_points, 'r-')
+    else:
+        x_min, y_min, x_max, y_max = bboxes
+
         x_points = [x_min, x_min, x_max, x_max, x_min]
         y_points = [y_min, y_max, y_max, y_min, y_min]
 
         plt.plot(x_points, y_points, 'r-')
-
 
 
 
@@ -328,37 +335,45 @@ class DetectionDataset(Dataset):
         return sample
 
 ## transforms
-class Pad(object):
-    """
-    Add padding to image
 
-    Args:
-        output_size (tuple or int): Desired output size. If tuple, output is
-            matched to output_size. If int, smaller of image edges is matched
-            to output_size keeping aspect ratio the same.
-    """
-    def __init__(self, output_size):
-        assert isinstance(output_size, (int, tuple)) # make sure output size is EITHER int or tuple
-        self.output_size = output_size
+# class Pad(object):
+#     """
+#     Add padding to image
 
-    def __call__(self, sample):
-        image, labels = sample["image"], sample["labels"]
+#     Args:
+#         output_size (tuple or int): Desired output size. If tuple, output is
+#             matched to output_size. If int, smaller of image edges is matched
+#             to output_size keeping aspect ratio the same.
+#     """
+#     def __init__(self, output_size):
+#         assert isinstance(output_size, (int, tuple)) # make sure output size is EITHER int or tuple
+#         self.output_size = output_size
 
-        img_w, img_h = image.shape[1], image.shape[0]
-        w, h = self.output_size
+#     def __call__(self, sample):
+#         image, labels = sample["image"], sample["labels"]
 
-        # calculate new width and height
-        new_w = int(img_w * min(w/img_w, h/img_h))
-        new_h = int(img_h * min(w/img_w, h/img_h))
-        resized_image = cv2.resize(image, (new_w,new_h), interpolation = cv2.INTER_CUBIC)
+#         img_h, img_w = image.shape[:2]
+#         w, h = self.output_size
+
+#         # calculate new width and height
+#         new_w = int(img_w * min(w/img_w, h/img_h))
+#         new_h = int(img_h * min(w/img_w, h/img_h))
+
+#         # resize image
+#         resized_image = cv2.resize(image, (new_w,new_h), interpolation = cv2.INTER_CUBIC)
+
+#         # resize bbox labels (x_c, y_c, w, h)
+#         labels[:, :4] = labels[:, :4] * [new_w/w, new_h/h, new_w/w, new_h/h]
         
-        canvas = np.full((self.output_size[1], self.output_size[0], 3), 128)
+#         # make a canvas sized (output_size, output_size) filled with padding colour
+#         canvas = np.full((self.output_size[1], self.output_size[0], 3), 128)
 
-        canvas[(h-new_h)//2:(h-new_h)//2 + new_h,(w-new_w)//2:(w-new_w)//2 + new_w,  :] = resized_image
+#         # put image into pad canvas such that the padding now fills edges to create padded image of size (output_size, output_size)
+#         canvas[(h-new_h)//2:(h-new_h)//2 + new_h,(w-new_w)//2:(w-new_w)//2 + new_w,  :] = resized_image
 
-        return {"image": canvas, "labels": labels}
+#         return {"image": resized_image, "labels": labels}
     
-class Rescale(object):
+class Pad(object):
     """
     Rescale the image in a sample to a given size.
 
@@ -372,27 +387,39 @@ class Rescale(object):
         self.output_size = output_size
 
     def __call__(self, sample):
-        image, categories, bboxes = sample["image"], sample["categories"], sample["bboxes"]
+        image, labels = sample["image"], sample["labels"]
 
         h, w = image.shape[:2] # image.shape = (x, y, channels)
         if isinstance(self.output_size, int): # the int specifies the smaller dimension, other dim scales based on it
-            if h > w:
-                new_h, new_w = self.output_size*h/w, self.output_size
-            else:
-                new_h, new_w = self.output_size, self.output_size*w/h
+            #if h > w:
+            new_h, new_w = self.output_size*h/w, self.output_size
+            #else:
+            #    new_h, new_w = self.output_size, self.output_size*w/h
         else: # if tuple then completely specified dims
             new_h, new_w = self.output_size
         
         new_h, new_w = int(new_h), int(new_w)
 
-        image = transform.resize(image, (new_h, new_w))
+        resized_image = cv2.resize(image, (new_w, new_h), interpolation = cv2.INTER_CUBIC)
 
-        # h and w are swapped for landmarks because for images,
+        # make a canvas sized (output_size, output_size) filled with padding colour
+        canvas = np.full((self.output_size, self.output_size, 3), 128)
+
+        # put image into pad canvas such that the padding now fills edges to create padded image of size (output_size, output_size)
+        canvas[(self.output_size-new_h)//2:(self.output_size-new_h)//2 + new_h,(self.output_size-new_w)//2:(self.output_size-new_w)//2 + new_w,  :] = resized_image
+        
+        black_bit = canvas[(self.output_size-new_w)//2:(self.output_size-new_w)//2 + new_w,(self.output_size-new_h)//2:(self.output_size-new_h)//2 + new_h,  :]
+
+        ## resize bbox labels
+
+        # first filter out 
+        # h and w are swapped for labels because for images,
         # x and y axes are axis 1 and 0 respectively
-        # broadcast (7, 4) * (1, 4)
-        bboxes = bboxes * [new_w/w, new_h/h, new_w/w, new_h/h]
+        # broadcast (n_bboxes, 4) * (1, 4)
+        labels[:, :4] = labels[:, :4] * [new_w/w, new_h/h, new_w/w, new_h/h]
+        labels[:, 1] = labels[:, 1] + ((self.output_size-new_h)//2)*(~np.all(labels==0, axis=1))
 
-        return {"image": image, "categories": categories, "bboxes": bboxes}
+        return {"image": canvas, "labels": labels}
 
 class Normalise(object):
     """
