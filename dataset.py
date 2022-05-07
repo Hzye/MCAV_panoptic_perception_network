@@ -407,8 +407,6 @@ class Pad(object):
 
         # put image into pad canvas such that the padding now fills edges to create padded image of size (output_size, output_size)
         canvas[(self.output_size-new_h)//2:(self.output_size-new_h)//2 + new_h,(self.output_size-new_w)//2:(self.output_size-new_w)//2 + new_w,  :] = resized_image
-        
-        black_bit = canvas[(self.output_size-new_w)//2:(self.output_size-new_w)//2 + new_w,(self.output_size-new_h)//2:(self.output_size-new_h)//2 + new_h,  :]
 
         ## resize bbox labels
 
