@@ -430,17 +430,23 @@ class Normalise(object):
     """
     def __init__(self, mean, std):
         # ensure input mean and std are integers or floats
-        assert isinstance(mean, (int, float))
-        assert isinstance(std, (int, float))
+        assert isinstance(mean, (list))
+        assert isinstance(std, (list))
         self.mean = mean
         self.std = std
 
     def __call__(self, sample):
-        image, categories, bboxes = sample["image"], sample["categories"], sample["bboxes"]
+        image, labels = sample["image"], sample["labels"]
 
-        image = (image - self.mean)/self.std
+        # convert to float
+        image = image.astype(float)
 
-        return {"image": image, "categories": categories, "bboxes": bboxes} 
+        # normalise each individual channel
+        image[:,:,0] = (image[:,:,0] - self.mean[0])/self.std[0]
+        image[:,:,1] = (image[:,:,1] - self.mean[1])/self.std[1]
+        image[:,:,2] = (image[:,:,2] - self.mean[2])/self.std[2]
+
+        return {"image": image, "labels": labels}
 
 class ToTensor(object):
     """
