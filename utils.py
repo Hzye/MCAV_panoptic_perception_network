@@ -312,22 +312,28 @@ def norm_with_padding(img, in_dims):
     new_h = int(img_h * min(w/img_w, h/img_h))
     resized_image = cv2.resize(img, (new_w,new_h), interpolation = cv2.INTER_CUBIC)
     
-    canvas = np.full((in_dims[1], in_dims[0], 3), 128)
+    canvas = np.full((in_dims[1], in_dims[0], 3), 128/255)
 
     canvas[(h-new_h)//2:(h-new_h)//2 + new_h,(w-new_w)//2:(w-new_w)//2 + new_w,  :] = resized_image
     
     return canvas
 
-def prep_image(img, in_dims):
+def prep_image(img, in_dims, mean, std):
     """
     Prepare image for inputting to the neural network. 
     
     Returns a Variable 
     """
-    # first pad the image
+    img = img.astype(np.float32)
+    # first normalise image
+    img[:,:,0] = (img[:,:,0] - mean[0])/std[0]
+    img[:,:,1] = (img[:,:,1] - mean[1])/std[1]
+    img[:,:,2] = (img[:,:,2] - mean[2])/std[2]
+
+    # then pad the image
     img = (norm_with_padding(img, (in_dims, in_dims)))
     # then transpose to correct dims order and tensorise 
     img = img[:,:,::-1].transpose((2,0,1)).copy()
-    img = torch.from_numpy(img).float().div(255.0).unsqueeze(0)
+    img = torch.from_numpy(img).unsqueeze(0)
     
     return img

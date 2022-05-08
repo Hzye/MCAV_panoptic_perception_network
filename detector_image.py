@@ -85,6 +85,8 @@ images = args.images # dir/image
 batch_size = int(args.bs) 
 confidence = float(args.confidence)
 nms_thresh = float(args.nms_thresh)
+mean = [92.11938007161459, 102.83839236762152, 104.90335580512152]
+std = [66.09941202519124, 70.6808655565459, 75.05305001603533]
 start = 0 # for timing
 CUDA = torch.cuda.is_available()
 
@@ -135,10 +137,17 @@ loaded_imgs = [cv2.imread(img) for img in img_list]
 
 # opencv loads images as np array with dims BxGxR
 # use prep_image to:
-#   1. pad the image  
-#   2. swap dims to correct order
+#   1. normalise the image
+#   2. pad the image  
+#   3. swap dims to correct order
 # save transformed images to list img_batches
-img_batches = list(map(prep_image, loaded_imgs, [in_dims for img in range(len(img_list))]))
+img_batches = list(map(
+    prep_image, 
+    loaded_imgs, 
+    [in_dims for img in range(len(img_list))], 
+    [mean for img in range(len(img_list))], 
+    [std for img in range(len(img_list))]
+))
 
 # save original dimensions of images in list img_dims_list
 img_dims_list = [(img.shape[1], img.shape[0]) for img in loaded_imgs]
