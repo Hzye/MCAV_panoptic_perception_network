@@ -476,22 +476,24 @@ class Normalise(object):
 
 class ToTensor(object):
     """
-    Convert ndarrays in sample to Tensors.
+    Convert ndarrays values from float64 to 32 and arrays to Tensors.
     """
 
     def __call__(self, sample):
-        image, categories, bboxes = sample["image"], sample["categories"], sample["bboxes"]
+        image, labels = sample["image"], sample["labels"]
 
         # swap color axis because
         # numpy image: H x W x C
         # torch image: C x H x W
         image = image.transpose((2, 0, 1))
-        image = torch.from_numpy(image)
+        image = image.astype(np.float32) # convert from float64 to 32
+        image = torch.from_numpy(image) # convert to tensor
         
         # bboxes are simply H x W and axes stay the same
-        bboxes = torch.from_numpy(bboxes)
+        labels = labels.astype(np.float32)
+        labels = torch.from_numpy(labels)
         
-        return {"image": image, "categories": categories, "bboxes": bboxes}
+        return {"image": image, "labels": labels}
 
 
 
