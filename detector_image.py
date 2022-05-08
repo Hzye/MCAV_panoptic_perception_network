@@ -90,7 +90,7 @@ std = [66.09941202519124, 70.6808655565459, 75.05305001603533]
 start = 0 # for timing
 CUDA = torch.cuda.is_available()
 
-n_classes = 80
+n_classes = 12
 classes = load_classes("data/coco.names")
 
 
