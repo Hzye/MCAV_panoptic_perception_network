@@ -334,6 +334,6 @@ def prep_image(img, in_dims, mean, std):
     img = (norm_with_padding(img, (in_dims, in_dims)))
     # then transpose to correct dims order and tensorise 
     img = img[:,:,::-1].transpose((2,0,1)).copy()
-    img = torch.from_numpy(img).unsqueeze(0)
+    img = torch.from_numpy(img).float().unsqueeze(0)
     
     return img
