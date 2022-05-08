@@ -224,7 +224,7 @@ def write_results(prediction, confidence, n_classes, nms_conf=0.4):
         # image_pred_ size (n_filtered_preds, 7)
         
         # obtain a tensor list of all classes.
-        img_classes = unique(image_pred_[:,-1])
+        #img_classes = unique(image_pred_[:,-1])
         
         ###########################################################################################
         
