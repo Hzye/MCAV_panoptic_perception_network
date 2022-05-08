@@ -431,7 +431,7 @@ class Pad(object):
         resized_image = cv2.resize(image, (new_w, new_h), interpolation = cv2.INTER_CUBIC)
 
         # make a canvas sized (output_size, output_size) filled with padding colour
-        canvas = np.full((self.output_size, self.output_size, 3), 128)
+        canvas = np.full((self.output_size, self.output_size, 3), 0.5019608)
 
         # put image into pad canvas such that the padding now fills edges to create padded image of size (output_size, output_size)
         canvas[(self.output_size-new_h)//2:(self.output_size-new_h)//2 + new_h,(self.output_size-new_w)//2:(self.output_size-new_w)//2 + new_w,  :] = resized_image
