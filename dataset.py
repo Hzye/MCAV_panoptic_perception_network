@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from skimage import io, transform
+from tqdm import tqdm
 import cv2
 
 def filter_labels(raw_json):
@@ -181,7 +182,34 @@ def draw_bbox(image, bboxes):
 
         plt.plot(x_points, y_points, 'r-')
 
+def img_mean_std(img_dir):
+    """
+    Calculate the means and standard deviations of each pixel channel of image dataset.
 
+    Input:
+    =img_dir=   directory with images of the same size.
+
+    Output:
+    =mean=      means of each pixel channel (R, G, B).
+    =std=       standard deviations of each pixel channel (R, G, B).
+    """
+    # list of image names
+    img_names = os.listdir(img_dir)
+    print("Datset Size: {}".format(len(img_names)))
+
+    # init with first image
+    all_img = io.imread(os.path.join(img_dir, img_names[0]))
+    
+    # iterate through rest of dataset and concat all images into a single long image
+    for i, image in enumerate(tqdm(img_names)):
+        if i>0:
+            all_img = np.concatenate((all_img, io.imread(os.path.join(img_dir, image))))
+
+    # calculate mean and std of each channel 
+    mean = [np.mean(all_img[:,:,0]), np.mean(all_img[:,:,1]), np.mean(all_img[:,:,2])]
+    std = [np.std(all_img[:,:,0]), np.std(all_img[:,:,1]), np.std(all_img[:,:,2])]
+
+    return mean, std
 
 class DetectionDataset(Dataset):
     """
