@@ -281,7 +281,9 @@ class Net(nn.Module):
                 n_classes = int(module["classes"])
 
                 # transform and output as detection tensor
+
                 x = x.data
+
                 x = predict_transform(
                     prediction=x, # size (n_batches, n_conv_filters_from_prev_layer, filter_w, filter_h)
                     in_dims=in_dims, # model height

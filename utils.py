@@ -28,7 +28,7 @@ def predict_transform(prediction, in_dims, anchors, n_classes, CUDA=True):
                             - [n_batches, (26*26*n_anchors), (4+1+n_classes)]
                             - [n_batches, (52*52*n_anchors), (4+1+n_classes)]
 """
-    # print(prediction.shape)
+    #print(prediction.shape)
     # print(prediction[0])
     #torch.save(prediction, "yolo_layer_input.pt")
     batch_size = prediction.shape[0]
