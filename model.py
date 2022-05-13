@@ -222,7 +222,8 @@ class Net(nn.Module):
             ## CONV and UPSAMPLE LAYERS:
             # pass input -> conv/upsample module -> output
             if (module_type == "convolutional") or (module_type == "upsample"):
-                x = self.module_list[idx](x) # pass in 
+                x = self.module_list[idx](x) # pass in
+                torch.save(x, "conv_upsample_layer_output.pt")
             
             ## ROUTE LAYERS
             # case 1: layer = n
@@ -250,13 +251,17 @@ class Net(nn.Module):
 
                     # concat feature maps along depth dim
                     x = torch.cat((feature_map_1, feature_map_2), 1)
+                
+                torch.save(x, "route_layer_output.pt")
 
             ## SHORTCUT LAYERS
             # from = n
             # output = (feature map from prev layer) + (feature layer from n-layers back)
             elif (module_type == "shortcut"):
                 from_ = int(module["from"])
-                x = outputs[idx-1] + outputs[idx+from_]           
+                x = outputs[idx-1] + outputs[idx+from_]   
+
+                torch.save(x, "shortcut_layer_output.pt")       
 
             ## YOLO LAYERS
             # output = conv feature map containing bbox attributes along depth of 
