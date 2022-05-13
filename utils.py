@@ -37,10 +37,15 @@ def predict_transform(prediction, in_dims, anchors, n_classes, CUDA=True):
     bbox_attrs = 5 + n_classes
     n_anchors = len(anchors)
 
+    # print("In predict_transform():")
+    # print(prediction.grad_fn)
+
     # reshaping
-    prediction = prediction.view(batch_size, bbox_attrs*n_anchors, grid_size*grid_size) # size (n_batches, n_conv_filters, (grid_w*grid_h))
-    prediction = prediction.transpose(1,2).contiguous()                                 # size (n_batches, (grid_w*grid_h), n_conv_filters)
-    prediction = prediction.view(batch_size, grid_size*grid_size*n_anchors, bbox_attrs) # size (n_batches, (grid_w*grid_h*n_anchors), 4+1+n_classes)
+    prediction = prediction.view(batch_size, bbox_attrs*n_anchors, grid_size*grid_size)  # size (n_batches, n_conv_filters, (grid_w*grid_h))
+    prediction = prediction.transpose(1,2).contiguous()                                  # size (n_batches, (grid_w*grid_h), n_conv_filters)
+    prediction = prediction.view(batch_size, grid_size*grid_size*n_anchors, bbox_attrs)  # size (n_batches, (grid_w*grid_h*n_anchors), 4+1+n_classes)
+
+
 
     # divide anchors by stride of detection feature map as input image is larger than detection map by a factor of stride
     anchors = [(a[0]/stride, a[1]/stride) for a in anchors]

@@ -223,7 +223,6 @@ class Net(nn.Module):
             # pass input -> conv/upsample module -> output
             if (module_type == "convolutional") or (module_type == "upsample"):
                 x = self.module_list[idx](x) # pass in
-                torch.save(x, "conv_upsample_layer_output.pt")
             
             ## ROUTE LAYERS
             # case 1: layer = n
@@ -251,17 +250,13 @@ class Net(nn.Module):
 
                     # concat feature maps along depth dim
                     x = torch.cat((feature_map_1, feature_map_2), 1)
-                
-                torch.save(x, "route_layer_output.pt")
 
             ## SHORTCUT LAYERS
             # from = n
             # output = (feature map from prev layer) + (feature layer from n-layers back)
             elif (module_type == "shortcut"):
                 from_ = int(module["from"])
-                x = outputs[idx-1] + outputs[idx+from_]   
-
-                torch.save(x, "shortcut_layer_output.pt")       
+                x = outputs[idx-1] + outputs[idx+from_]      
 
             ## YOLO LAYERS
             # output = conv feature map containing bbox attributes along depth of 
@@ -286,8 +281,9 @@ class Net(nn.Module):
                 n_classes = int(module["classes"])
 
                 # transform and output as detection tensor
-
-                x = x.data
+                print("Before predict_transform")
+                print(x.requires_grad)
+                #x = x.data
 
                 x = predict_transform(
                     prediction=x, # size (n_batches, n_conv_filters_from_prev_layer, filter_w, filter_h)
@@ -312,7 +308,8 @@ class Net(nn.Module):
                 #
                 # This encapsulates EVERY SINGLE DETECTION for a single image in ALL 3 GRIDSIZES
                 ######################################################################################
-
+                print(module_type)
+                print(x.grad_fn)
             # save current output
             outputs[idx] = x
         return detections
