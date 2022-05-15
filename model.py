@@ -281,8 +281,8 @@ class Net(nn.Module):
                 n_classes = int(module["classes"])
 
                 # transform and output as detection tensor
-                print("Before predict_transform")
-                print(x.requires_grad)
+                # print("Before predict_transform")
+                # print(x.requires_grad)
                 #x = x.data
 
                 x = predict_transform(
@@ -292,7 +292,7 @@ class Net(nn.Module):
                     n_classes=n_classes,
                     CUDA=CUDA
                 )
-                
+
                 # if this is the FIRST YOLO DETECTION LAYER, then initiate collector
                 if not write:
                     detections = x
@@ -308,8 +308,7 @@ class Net(nn.Module):
                 #
                 # This encapsulates EVERY SINGLE DETECTION for a single image in ALL 3 GRIDSIZES
                 ######################################################################################
-                print(module_type)
-                print(x.grad_fn)
+                
             # save current output
             outputs[idx] = x
         return detections
