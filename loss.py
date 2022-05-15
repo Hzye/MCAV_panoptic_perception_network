@@ -57,8 +57,8 @@ class Yolo_Loss(nn.Module):
 
         ## object loss
         # use binary cross entropy loss
-        t1 = label[:,:,4]*torch.log(prediction[:,:,4])
-        t2 = (1 - label[:,:,4])*torch.log(1 - prediction[:,:,4])
+        t1 = label[:,:,4]*torch.log(prediction[:,:,4]+1e-10)
+        t2 = (1 - label[:,:,4])*torch.log(1 - prediction[:,:,4]+1e-10)
         obj_bce = t1 + t2
         obj_loss = -(1/batch_size)*torch.sum(obj_ij*obj_bce)
 
