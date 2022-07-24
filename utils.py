@@ -7,29 +7,27 @@ from torch.autograd import Variable
 import numpy as np
 import cv2 
 
-def predict_transform(prediction, in_dims, anchors, n_classes, CUDA=True):
-    """
-    Converts detection feature map from convolution layer into 2D tensor, where each row are attributes of bbox.
+def predict_transform(prediction: torch.FloatTensor, in_dims: int, anchors: list[tuple], n_classes: int, CUDA: bool = True) -> torch.FloatTensor:
+    """Converts detection feature map from convolution layer into 2D tensor, where each row are attributes of bbox.
 
-    Inputs:
-    =prediction=    output from previous conv layer. size (n_batches, n_conv_filters, grid_size, grid_size)
+    Args:
+        prediction (torch.FloatTensor): Output from previous conv layer. size (n_batches, n_conv_filters, grid_size, grid_size)
                         -> we expect 3 different predictions to come in for EACH IMAGE, with grid_sizes:
                             - [n_batches, n_conv_filters, 13, 13]
                             - [n_batches, n_conv_filters, 26, 26]
                             - [n_batches, n_conv_filters, 52, 52]
-    =in_dims=       model height
-    =anchors=       widths, heights of anchor boxes. size (n_anchors, 2) -> [(a1_w, a1_h), (a2_w, a2_h), (a3_w, a3_h)]
-    =n_classes=     number of object classes in image dataset
+        in_dims (int): Model height.
+        anchors (list[tuple]): Widths, heights of anchor boxes. size (n_anchors, 2) -> [(a1_w, a1_h), (a2_w, a2_h), (a3_w, a3_h)].
+        n_classes (int): Number of object classes in image dataset.
+        CUDA (bool, optional): Whether CUDA cores are available. Defaults to True.
 
-    Output:
-    =prediction=    output from yolo detection layer. size (n_batches, (grid_size*grid_size*n_anchors), (4+1+n_classes))
+    Returns:
+        prediction (torch.FloatTensor): Output from yolo detection layer. size (n_batches, (grid_size*grid_size*n_anchors), (4+1+n_classes))
                         -> we expect 3 different predictions to output for EACH IMAGE, with grid_sizes:
                             - [n_batches, (13*13*n_anchors), (4+1+n_classes)]
                             - [n_batches, (26*26*n_anchors), (4+1+n_classes)]
                             - [n_batches, (52*52*n_anchors), (4+1+n_classes)]
-"""
-    #print(prediction.shape)
-    # print(prediction[0])
+    """
     #torch.save(prediction, "yolo_layer_input.pt")
     batch_size = prediction.shape[0]
     stride = in_dims // prediction.shape[2]
@@ -105,23 +103,17 @@ def predict_transform(prediction, in_dims, anchors, n_classes, CUDA=True):
 
     return prediction
 
-def unique(tensor):
-    """
-    Returns tensor list of unique class indices detected.
-    """
-    # convert to np array
-    tensor_np = tensor.cpu().numpy()
-    #
-    unique_np = np.unique(tensor_np)
-    unique_tensor = torch.from_numpy(unique_np)
+def bbox_iou(box1: torch.FloatTensor, box2: torch.FloatTensor):
+    """Returns intersection over union of two bounding boxes.
 
-    tensor_res = tensor.new(unique_tensor.shape)
-    tensor_res.copy_(unique_tensor)
-    return tensor_res
+    Strictly performed on tensors.
 
-def bbox_iou(box1, box2):
-    """
-    Returns intersection over union of two bounding boxes.
+    Args:
+        box1 (torch.FloatTensor): Coordinates of bbox 1.
+        box2 (torch.FloatTensor): Coordinates of bbox 2.
+
+    Returns:
+        iou (float): IOU of two input bboxes.
     """
     # get coords of bboxes
     b1_x1, b1_y1, b1_x2, b1_y2 = box1[:,0], box1[:,1], box1[:,2], box1[:,3]
@@ -148,19 +140,18 @@ def bbox_iou(box1, box2):
 
     return iou    
 
-def write_results(prediction, confidence, n_classes, nms_conf=0.4):
-    """
-    Filters raw predictions made from network forward pass based on object confidence thresholding and NMS.
+def write_results(prediction: torch.FloatTensor, confidence: float, n_classes: int, nms_conf: float = 0.4) -> torch.FloatTensor:
+    """Filters raw predictions made from network forward pass based on object confidence thresholding and NMS.
 
-    Inputs:
-    =prediction=    output prediction tensor from network, size (batch_size, n_bboxes, 4 bbox attrs + 1 obj score + n_classes)
-    =confidence=    object confidence score threshold, default 0.5
-    =n_classes=     number of classes within dataset
-    =nms_conf=      non max suppression confidence threshold, default 0.4
+    Args:
+        prediction (torch.FloatTensor): Output prediction tensor from network, size (batch_size, n_bboxes, 4 bbox attrs + 1 obj score + n_classes).
+        confidence (float): Object confidence score threshold. Default to 0.5.
+        n_classes (int): Number of classes within dataset.
+        nms_conf (float, optional): Non max suppression confidence threshold. Defaults to 0.4.
 
-    Outputs:
-    =output=        returns number of tensors based on number of predicted objects (1, 8)
-                    [n_in_batch, min_x, min_y, max_x, max_y, max_class_score, max_class_score_idx]
+    Returns:
+        output (torch.FloatTensor): Returns number of tensors based on number of predicted objects (1, 8)
+                    form of [n_in_batch, min_x, min_y, max_x, max_y, max_class_score, max_class_score_idx]
     """
 
     ## [1] Filter predictions based on OBJECT CONFIDENCE THRESHOLD
@@ -255,7 +246,6 @@ def write_results(prediction, confidence, n_classes, nms_conf=0.4):
                 ious = bbox_iou(image_pred_ordered[det].unsqueeze(0), image_pred_ordered[det+1:])
             except ValueError:
                 break
-
             except IndexError:
                 break
             
@@ -301,16 +291,24 @@ def write_results(prediction, confidence, n_classes, nms_conf=0.4):
     except:
         return 0
 
+# TODO: remove this one and just use the one is dataset.py
 def load_classes(namesfile):
     fp = open(namesfile, "r")
     names = fp.read().split("\n")
     return names
 
-def norm_with_padding(img, in_dims):
-    """
-    Adds padding to image in order to adhere to size (in_dims, in_dims, 3).
+# TODO: check if this still needed, since images should be padded beforehand anyway?
+def norm_with_padding(img: np.ndarray, in_dims: int) -> np.ndarray:
+    """Adds padding to image in order to adhere to size (in_dims, in_dims, 3).
 
     Does not change aspect ratio.
+
+    Args:
+        img (np.ndarray): Image to be padded.
+        in_dims (int): Dimension of image.
+
+    Returns:
+        canvas (np.ndarray): Padded and normalised image.
     """
     img_w, img_h = img.shape[1], img.shape[0]
     w, h = in_dims
@@ -326,6 +324,7 @@ def norm_with_padding(img, in_dims):
     
     return canvas
 
+# TODO: check if still needed, as above
 def prep_image(img, in_dims, mean, std):
     """
     Prepare image for inputting to the neural network. 
