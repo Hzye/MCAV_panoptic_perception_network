@@ -2,15 +2,15 @@ from __future__ import division
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 from torch.autograd import Variable
 import numpy as np
+from typing import Union
+import os
 
 from utils import *
 
-def test_forward_pass():
-    """
-    Simple function to test forward pass.
+def test_forward_pass() -> torch.FloatTensor:
+    """Simple function to test forward pass.
     """
     img = cv2.imread("images/0000f77c-62c2a288.jpg")
     img = cv2.resize(img, (416,416)) # resize to input dims
@@ -20,14 +20,19 @@ def test_forward_pass():
     reshaped_img = Variable(reshaped_img) # convert to variable
     return reshaped_img
 
-def parse_cfg(cfgfile):
-    """
-    Parses config file and stores every block as a dicts.
+def parse_cfg(cfgfile: Union[str, bytes, os.PathLike]) -> list:
+    """Parses config file and stores every block as a dicts.
     
     Attributes and their values are stored as key-value pairs.
     
     As the cfg file is parsed through, append these dicts, denoted by variable 'block' in code
     to a list 'blocks'.
+
+    Args:
+        cfgfile (Union[str, bytes, os.PathLike]): Location of config file.
+
+    Returns:
+        blocks (list): List of dictionaries containing details of each block in network. 
     """
     ## Preprocessing
     file = open(cfgfile, 'r')
@@ -62,15 +67,23 @@ def parse_cfg(cfgfile):
     return blocks             
 
 class EmptyLayer(nn.Module):
-    def __init__(self):
+    def __init__(self) -> None:
         super(EmptyLayer, self).__init__()
 
 class DetectionLayer(nn.Module):
-    def __init__(self, anchors):
+    def __init__(self, anchors) -> None:
         super(DetectionLayer, self).__init__()
         self.anchors = anchors
 
-def create_modules(blocks):
+def create_modules(blocks: list[dict]) -> tuple:
+    """Creates tuple with general network information/hyperparams and ModuleList containing details of each block within network.
+
+    Args:
+        blocks (list[dict]): List of network blocks, as well as details.
+
+    Returns:
+        network_info, module_list (tuple): General network info and list of network modules.
+    """
     net_info = blocks[0] # save info from [net] in cfg
     module_list = nn.ModuleList()
     prev_filters = 3 # 3 filters for each of the RGB channels
@@ -198,7 +211,7 @@ def create_modules(blocks):
     return (net_info, module_list)
 
 class Net(nn.Module):
-    def __init__(self, cfgfile):
+    def __init__(self, cfgfile: Union[str, bytes, os.PathLike]) -> None:
         super(Net, self).__init__()
         self.blocks = parse_cfg(cfgfile) # has iterable parameters of all modules
         self.net_info, self.module_list = create_modules(self.blocks) # has the ACTUAL modules
@@ -207,17 +220,15 @@ class Net(nn.Module):
     # 1. calculate output
     # 2. transform output detection feature maps so that it can be 
     #    processed easier 
-    def forward(self, x, CUDA):
+    def forward(self, x, CUDA: bool) -> torch.FloatTensor:
         modules = self.blocks[1:]
         outputs = {} # cache outputs for route layer
-        #print("hello")
 
         # iterate over module_list, pass input through each module
         # in -> [module[0]] -> [module[1]] -> ...
         write = 0 # used as flag to inidicate if we've encountered first DETECTION LAYER yet (there are 3) 
         for idx, module in enumerate(modules):
             module_type = (module["type"])
-            #print(module_type)
 
             ## CONV and UPSAMPLE LAYERS:
             # pass input -> conv/upsample module -> output
@@ -313,7 +324,7 @@ class Net(nn.Module):
             outputs[idx] = x
         return detections
 
-    def load_weights(self, weightfile):
+    def load_weights(self, weightfile: Union[str, bytes, os.PathLike]):
         """
         Load pre-trained weights.
         """
