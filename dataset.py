@@ -1,16 +1,16 @@
 from __future__ import print_function, division
 import os
 import torch
-from torch.utils.data import Dataset, DataLoader
-from torchvision import transforms, utils
+from typing import Union
+from torch.utils.data import Dataset
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from skimage import io, transform
+from skimage import io
 from tqdm import tqdm
 import cv2
 
-def filter_labels(raw_json) -> dict:
+def filter_labels(raw_json: object) -> dict:
     """Re-organises json file into dictionary, such that:
         - keys =    image names.
         - values =  list of dictionaries which contain key value information for each labelled 
@@ -60,7 +60,7 @@ def filter_labels(raw_json) -> dict:
     
     return data_labels
 
-def load_classes(namesfile: str) -> list[str]:
+def load_classes(namesfile: Union[str, bytes, os.PathLike]) -> list[str]:
     """Loads file containing the unique classes of objects within the BDD100k dataset.
 
     Args:
@@ -123,16 +123,15 @@ def centre_dims_to_corners(bbox: np.ndarray) -> np.ndarray:
 
     return new_bbox
 
-def bbox_anchorbox_iou(bbox: np.ndarray, anchor_boxes: np.ndarray):
-    """
-    Returns intersection over union of two bounding boxes.
+def bbox_anchorbox_iou(bbox: np.ndarray, anchor_boxes: np.ndarray) -> np.ndarray:
+    """Returns intersection over union of two bounding boxes.
 
-    Performed on np arrays.
+    Args:
+        bbox (np.ndarray): 1D array of current bbox coordinates being compared to anchors.
+        anchor_boxes (np.ndarray): 2D array of 3 anchor box coordinates.
 
-    Inputs:
-
-    Outputs:
-    =iou=   array with iou between bbox and chosen anchor boxes.
+    Returns:
+        iou (np.ndarray): IOUs calculated between current bbox and 3 anchor boxes.
     """
     # get coords of bboxes
     b1_x1, b1_y1, b1_x2, b1_y2 = bbox[0], bbox[1], bbox[2], bbox[3]
@@ -165,16 +164,15 @@ def bbox_anchorbox_iou(bbox: np.ndarray, anchor_boxes: np.ndarray):
 
     return iou    
 
-def draw_bbox(image, bboxes):
-    """
-    Draw all bounding boxes over image.
+def draw_bbox(image: np.ndarray, bboxes: np.ndarray):
+    """Draw all bboxes over image.
+
+    Args:
+        image (np.ndarray): 2D array representing image to have bboxes drawn over.
+        bboxes (np.ndarray): 2D array of bboxes coords corresponding to image.
     
-    Inputs:
-    =image=     image to be shown with bounding boxes.
-    =bboxes=    bounding box coordinates as list.
-    
-    Outputs:
-    =plt.plot=  image from dataset with bounding boxes drawn over it.
+    Returns:
+        Image with bboxes drawn over.
     """
     # display current image
     #print(image.shape)
@@ -197,16 +195,15 @@ def draw_bbox(image, bboxes):
 
         plt.plot(x_points, y_points, 'r-')
 
-def img_mean_std(img_dir):
-    """
-    Calculate the means and standard deviations of each pixel channel of image dataset.
+def img_mean_std(img_dir: str):
+    """Calculate the means and standard deviations of each pixel channel of image dataset.
 
-    Input:
-    =img_dir=   directory with images of the same size.
+    Args:
+        img_dir (str): Directory with images of the same size.
 
-    Output:
-    =mean=      means of each pixel channel (R, G, B).
-    =std=       standard deviations of each pixel channel (R, G, B).
+    Returns:
+        mean (float): Means of each pixel channel (R, G, B).
+        std (float): Standard deviations of each pixel channel (R, G, B).
     """
     # list of image names
     img_names = os.listdir(img_dir)
@@ -231,17 +228,17 @@ class DetectionDataset(Dataset):
     Object detection dataset with bounding box, objectness score and class data.
     
     """
-    def __init__(self, label_dict, root_dir, classes_file, grid_sizes, anchors, transform=None):
+    def __init__(self, label_dict: object, root_dir: Union[str, bytes, os.PathLike], classes_file: Union[str, bytes, os.PathLike], grid_sizes: list, anchors: np.ndarray, transform: object = None) -> None:
         """
         Args:
-        =label_dict=    file location of bdd100k detection labels (.json).
-        =root_dir=      directory with all images.
-        =classes_file=  file location of unique classes within bdd100k (.names).
-        =grid_sizes=    list of different grid sizes that detection will be performed on per image. 
+            label_dict (object): File location of bdd100k detection labels (.json).
+            root_dir (Union[str, bytes, os.PathLike]): Directory with all images.
+            classes_file (Union[str, bytes, os.PathLike]): File location of unique classes within bdd100k (.names).
+            grid_sizes (list): List of different grid sizes that detection will be performed on per image. 
                             Expected size: (1, grid_sizes)
-        =anchors=       np array of anchors to be used per grid size. 
-                            Expected size: (n_grid_sizes, n_anchors, 2) - 2 being size of (anchor_w, anchor_h)
-        =transform=     optional transform to be applied on a sample.
+            anchors (np.ndarray): 2D array of anchors to be used per grid size. 
+                            Expected size: (n_grid_sizes, n_anchors, 2) -> 2 being size of (anchor_w, anchor_h)
+            transform (object, optional): Optional transform to be applied on a sample. Defaults to None.
         """
         self.labels = filter_labels(label_dict)
         self.root_dir = root_dir
@@ -251,9 +248,13 @@ class DetectionDataset(Dataset):
         self.transform = transform
     
     def __len__(self):
+        """Returns size of dataset.
+        """
         return(len(self.labels))
     
-    def __getitem__(self, idx):
+    def __getitem__(self, idx: int):
+        """Allows for iteration through dataset.
+        """
         if torch.is_tensor(idx):
             idx = idx.tolist()
 
@@ -376,45 +377,6 @@ class DetectionDataset(Dataset):
             sample = self.transform(sample)
 
         return sample
-
-## transforms
-
-# class Pad(object):
-#     """
-#     Add padding to image
-
-#     Args:
-#         output_size (tuple or int): Desired output size. If tuple, output is
-#             matched to output_size. If int, smaller of image edges is matched
-#             to output_size keeping aspect ratio the same.
-#     """
-#     def __init__(self, output_size):
-#         assert isinstance(output_size, (int, tuple)) # make sure output size is EITHER int or tuple
-#         self.output_size = output_size
-
-#     def __call__(self, sample):
-#         image, labels = sample["image"], sample["labels"]
-
-#         img_h, img_w = image.shape[:2]
-#         w, h = self.output_size
-
-#         # calculate new width and height
-#         new_w = int(img_w * min(w/img_w, h/img_h))
-#         new_h = int(img_h * min(w/img_w, h/img_h))
-
-#         # resize image
-#         resized_image = cv2.resize(image, (new_w,new_h), interpolation = cv2.INTER_CUBIC)
-
-#         # resize bbox labels (x_c, y_c, w, h)
-#         labels[:, :4] = labels[:, :4] * [new_w/w, new_h/h, new_w/w, new_h/h]
-        
-#         # make a canvas sized (output_size, output_size) filled with padding colour
-#         canvas = np.full((self.output_size[1], self.output_size[0], 3), 128)
-
-#         # put image into pad canvas such that the padding now fills edges to create padded image of size (output_size, output_size)
-#         canvas[(h-new_h)//2:(h-new_h)//2 + new_h,(w-new_w)//2:(w-new_w)//2 + new_w,  :] = resized_image
-
-#         return {"image": resized_image, "labels": labels}
     
 class Pad(object):
     """
@@ -509,47 +471,3 @@ class ToTensor(object):
         labels = torch.from_numpy(labels)
         
         return {"image": image, "labels": labels}
-
-
-
-# ## filter labels
-# filtered_labels = filter_labels("det_train_shortened.json")
-
-# # ## load custom dataset
-# # testing = DetectionDataset(
-# #     label_dict=filtered_labels,
-# #     root_dir="./images/",
-# # )
-# # fig = plt.figure()
-
-# # # check shapes
-# # print("# image_shape    n_objects")
-# # for i in range(len(testing)):
-# #     sample = testing[i]
-
-# #     print(i, sample["image"].shape, len(sample["categories"]))
-
-# #     ax = plt.subplot(1, 2, i+1)
-# #     ax.set_title('Sample #{}'.format(i))
-# #     ax.axis('off')
-# #     draw_bbox(**sample)
-
-# ## data loader
-# transformed_train_data = DetectionDataset(
-#     label_dict=filtered_labels,
-#     root_dir='images/',
-#     transform=transforms.Compose([
-#         transforms.Normalize(
-#         mean=[0.485, 0.456, 0.406],
-#         std=[0.229, 0.224, 0.255]),
-#         Rescale(256),
-#         ToTensor()
-#     ])
-# )
-
-# train_loader = DataLoader(
-#     transformed_train_data,
-#     batch_size=2,
-#     shuffle=True,
-#     num_workers=0
-# )
