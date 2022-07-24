@@ -10,9 +10,8 @@ from skimage import io, transform
 from tqdm import tqdm
 import cv2
 
-def filter_labels(raw_json):
-    """
-    Re-organises json file into dictionary, such that:
+def filter_labels(raw_json) -> dict:
+    """Re-organises json file into dictionary, such that:
         - keys =    image names.
         - values =  list of dictionaries which contain key value information for each labelled 
                     object in frame.
@@ -34,11 +33,12 @@ def filter_labels(raw_json):
                     ],
                 }
     -----------------------------------------------------------------------------------------
-    Input:
-    =raw_json=      raw json file containing all labels corresponding to image dataset.
 
-    Output:
-    =data_labels=   dictionary with appropriate labels corresponding to image name.
+    Args:
+        raw_json (.json): Raw json file containing labels corresponding to image dataset.
+
+    Returns:
+        data_labels (dict): Dictionary with only appropriate labels corresponding to image name.
     """
     raw_df = pd.read_json(raw_json)
     data_labels = {}
@@ -60,19 +60,29 @@ def filter_labels(raw_json):
     
     return data_labels
 
-def load_classes(namesfile):
-    """
-    Loads file containing the unique classes of objects within the BDD100k dataset.
+def load_classes(namesfile: str) -> list[str]:
+    """Loads file containing the unique classes of objects within the BDD100k dataset.
+
+    Args:
+        namesfile (str): Textfile containing names of unique objects.
+
+    Returns:
+        names (list[str]): List of unique objects found in dataset.
     """
     fp = open(namesfile, "r")
     names = fp.read().split("\n")
     return names
 
-def corners_to_centre_dims(bbox):
-    """
-    Converts bbox attributes of form [x1, y1, x2, y2] to form [x_centre, y_centre, width, height].
+def corners_to_centre_dims(bbox: np.ndarray) -> np.ndarray:
+    """Converts bbox attributes of form [x1, y1, x2, y2] to form [x_centre, y_centre, width, height].
 
     This form is used for training and feeding into network.
+
+    Args:
+        bbox (np.ndarray): Bbox corner coords [x1, y1, x2, y2].
+
+    Returns:
+        new_bbox (np.ndarray): Bbox centre and dims [x_centre, y_centre, width, height].
     """
     width = bbox[2]-bbox[0]
     height = bbox[3]-bbox[1]
@@ -81,13 +91,18 @@ def corners_to_centre_dims(bbox):
     new_bbox = np.array([x_centre, y_centre, width, height])
     return new_bbox
 
-def centre_dims_to_corners(bbox):
-    """
-    Converts bbox attributes of form [x_centre, y_centre, width, height] to form [x1, y1, x2, y2]. 
+def centre_dims_to_corners(bbox: np.ndarray) -> np.ndarray:
+    """Converts bbox attributes of form [x_centre, y_centre, width, height] to form [x1, y1, x2, y2]. 
     
     Use on an array of bboxes: [[bbox_1], [bbox_2], ... [bbox_n]].
 
     This form is used for easily calculating 2 bbox's IoU.
+
+    Args:
+        bbox (np.ndarray): Bbox centre and dims [x_centre, y_centre, width, height].
+
+    Returns:
+        new_bbox (np.ndarray): Bbox corner coords [x1, y1, x2, y2].
     """
     if len(bbox.shape) > 1:
         x_c, y_c, w, h = bbox[:,0], bbox[:,1], bbox[:,2], bbox[:,3]
@@ -108,7 +123,7 @@ def centre_dims_to_corners(bbox):
 
     return new_bbox
 
-def bbox_anchorbox_iou(bbox, anchor_boxes):
+def bbox_anchorbox_iou(bbox: np.ndarray, anchor_boxes: np.ndarray):
     """
     Returns intersection over union of two bounding boxes.
 
